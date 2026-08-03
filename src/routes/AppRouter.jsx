@@ -4,7 +4,7 @@ import AppLayout from "@/layouts/AppLayout";
 import AuthLayout from "@/layouts/AuthLayout";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 
-import Login from "@/pages/auth/Login";
+import Login from "@/components/auth/Login";
 import Dashboard from "@/pages/dashboard/Dashboard";
 import NotFound from "@/pages/NotFound";
 
