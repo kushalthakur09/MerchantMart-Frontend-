@@ -1,6 +1,6 @@
 import { Search } from "lucide-react";
 
-const SearchBar = () => {
+const NavbarSearch = () => {
   return (
     <button className="flex h-10 w-full max-w-sm items-center justify-between rounded-lg border bg-background px-3 text-sm text-muted-foreground hover:bg-accent">
       <div className="flex items-center gap-2">
@@ -13,4 +13,4 @@ const SearchBar = () => {
   );
 };
 
-export default SearchBar;
+export default NavbarSearch;

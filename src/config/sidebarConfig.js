@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, ShoppingCart, Users } from "lucide-react";
+import { LayoutDashboard, FolderTree,Package, ShoppingCart, Users } from "lucide-react";
 
 import { ROUTES } from "./routes";
 
@@ -7,6 +7,11 @@ export const sidebarConfig = [
     label: "Dashboard",
     icon: LayoutDashboard,
     to: ROUTES.DASHBOARD,
+  },
+  {
+    label: "Categories",
+    icon: FolderTree,
+    to: ROUTES.CATEGORIES,
   },
   {
     label: "Products",
