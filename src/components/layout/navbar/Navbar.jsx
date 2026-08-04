@@ -1,7 +1,7 @@
 import Breadcrumbs from "./Breadcrumbs";
 import NotificationMenu from "./NotificationMenu";
 import ProfileMenu from "./ProfileMenu";
-import SearchBar from "./SearchBar";
+import NavSearchBar from "./NavbarSearch";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Menu } from "lucide-react";
 import MobileSidebarTrigger from "./MobileSidebarTrigger";
@@ -16,7 +16,7 @@ const Navbar = () => {
       </div>
 
       <div className="flex items-center gap-4">
-        <SearchBar />
+        <NavSearchBar />
         <NotificationMenu />
         <ProfileMenu />
       </div>

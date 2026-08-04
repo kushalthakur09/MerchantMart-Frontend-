@@ -7,6 +7,7 @@ import ProtectedRoute from "@/routes/ProtectedRoute";
 import Login from "@/components/auth/Login";
 import Dashboard from "@/pages/dashboard/Dashboard";
 import NotFound from "@/pages/NotFound";
+import Category from "@/pages/category/Category";
 
 export default function AppRouter() {
   return (
@@ -19,6 +20,7 @@ export default function AppRouter() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/categories" element={<Category />} />
           </Route>
         </Route>
         <Route path="*" element={<NotFound />} />
