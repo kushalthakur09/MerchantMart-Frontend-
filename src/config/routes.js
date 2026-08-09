@@ -3,6 +3,8 @@ export const ROUTES = {
 
   DASHBOARD: "/dashboard",
 
+  STORE_ADMINS: "/store-admins",
+
   PRODUCTS: "/products",
 
   CATEGORIES: "/categories",
@@ -16,6 +18,8 @@ export const ROUTES = {
   REFUNDS: "/refunds",
 
   BRANCHES: "/branches",
+
+  SHIFT_REPORTS: "/shift-reports",
 
   EMPLOYEES: "/employees",
 
