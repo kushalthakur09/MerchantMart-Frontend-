@@ -2,22 +2,22 @@ import { Navigate, Outlet } from "react-router-dom";
 
 import useAuth from "@/hooks/useAuth";
 
-const ProtectedRoute = ({ allowedRoles }) => {
-  const { isAuthenticated, user, loading } = useAuth();
+const RoleProtectedRoute = ({ allowedRoles }) => {
+  const { user, loading } = useAuth();
 
   if (loading) {
     return null;
   }
 
-  if (!isAuthenticated) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user?.role)) {
+  if (!allowedRoles.includes(user.role)) {
     return <Navigate to="/dashboard" replace />;
   }
 
   return <Outlet />;
 };
 
-export default ProtectedRoute;
+export default RoleProtectedRoute;

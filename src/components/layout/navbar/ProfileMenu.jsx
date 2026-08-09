@@ -12,11 +12,20 @@ import useAuth from "@/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const ProfileMenu = () => {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const fullName = user?.fullUserName || "User";
+  const role = user?.role?.replace("ROLE_", "").replaceAll("_", " ") || "";
+
+  const initials = fullName
+    .split(" ")
+    .map((name) => name[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   const handleLogout = () => {
-    console.log("Logout clicked");
     logout();
     navigate("/login", { replace: true });
   };
@@ -25,12 +34,12 @@ const ProfileMenu = () => {
     <DropdownMenu>
       <DropdownMenuTrigger className="flex items-center gap-3 rounded-lg p-2 hover:bg-accent">
         <Avatar>
-          <AvatarFallback>KR</AvatarFallback>
+          <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
 
         <div className="hidden text-left md:block">
-          <p className="text-sm font-medium">Kushal</p>
-          <p className="text-xs text-muted-foreground">Store Admin</p>
+          <p className="text-sm font-medium">{fullName}</p>
+          <p className="text-xs text-muted-foreground">{role}</p>
         </div>
       </DropdownMenuTrigger>
 
@@ -45,7 +54,7 @@ const ProfileMenu = () => {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem>Logout</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

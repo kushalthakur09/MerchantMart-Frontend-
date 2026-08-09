@@ -6,25 +6,28 @@ import authService from "@/services/auth/authService";
 const useAuth = () => {
   const [auth, setAuth] = useRecoilState(authState);
 
+  const setAuthenticatedUser = (response) => {
+    setAuth({
+      isAuthenticated: true,
+      token: response.token,
+      user: response.user,
+      loading: false,
+    });
+
+    localStorage.setItem("token", response.token);
+    localStorage.setItem("user", JSON.stringify(response.user));
+
+    return response;
+  };
+
   const login = async (loginRequest) => {
-    try {
-      const response = await authService.login(loginRequest);
+    const response = await authService.login(loginRequest);
+    return setAuthenticatedUser(response);
+  };
 
-      setAuth({
-        isAuthenticated: true,
-        token: response.token,
-        user: response.user,
-        loading: false,
-      });
-
-      localStorage.setItem("token", response.token);
-      localStorage.setItem("user", JSON.stringify(response.user));
-      //   console.log(response.user);
-      //   console.log(response.token);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+  const adminLogin = async (loginRequest) => {
+    const response = await authService.adminLogin(loginRequest);
+    return setAuthenticatedUser(response);
   };
 
   const logout = () => {
@@ -36,6 +39,7 @@ const useAuth = () => {
   return {
     ...auth,
     login,
+    adminLogin,
     logout,
   };
 };
