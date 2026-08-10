@@ -11,7 +11,8 @@ import {
   RotateCcw,
   Clock,
   BarChart3,
-   UserPlus,
+  UserPlus,
+  Store as StoreIcon,
 } from "lucide-react";
 
 import { ROUTES } from "./routes";
@@ -25,11 +26,23 @@ export const sidebarConfig = [
     roles: Object.values(ROLES),
   },
   {
-  label: "Store Admins",
-  icon: UserPlus,
-  to: ROUTES.STORE_ADMINS,
-  roles: [ROLES.ADMIN],
-},
+    label: "Store Admins",
+    icon: UserPlus,
+    to: ROUTES.STORE_ADMINS,
+    roles: [ROLES.ADMIN],
+  },
+  {
+    label: "Store",
+    icon: StoreIcon,
+    to: ROUTES.STORE,
+    roles: [ROLES.STORE_ADMIN],
+  },
+  {
+    label: "Stores",
+    icon: StoreIcon,
+    to: ROUTES.STORES,
+    roles: [ROLES.ADMIN],
+  },
   {
     label: "Analytics",
     icon: BarChart3,
