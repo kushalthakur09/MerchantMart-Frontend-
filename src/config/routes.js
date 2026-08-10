@@ -5,6 +5,9 @@ export const ROUTES = {
 
   STORE_ADMINS: "/store-admins",
 
+  STORE: "/store",
+  STORES: "/stores",
+
   PRODUCTS: "/products",
 
   CATEGORIES: "/categories",

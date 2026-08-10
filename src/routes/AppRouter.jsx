@@ -16,6 +16,8 @@ import Category from "@/pages/category/Category";
 import RoleProtectedRoute from "@/routes/RoleProtectedRoute";
 import Analytics from "@/pages/analytics/Analytics";
 import StoreAdmins from "@/pages/store-admin/StoreAdmins";
+import Store from "@/pages/store/Store";
+import Stores from "@/pages/store/Stores";
 
 import { ROLES } from "@/constants/roles";
 
@@ -52,6 +54,14 @@ export default function AppRouter() {
               element={<RoleProtectedRoute allowedRoles={[ROLES.ADMIN]} />}
             >
               <Route path="/store-admins" element={<StoreAdmins />} />
+              <Route path="/stores" element={<Stores />} />
+            </Route>
+            <Route
+              element={
+                <RoleProtectedRoute allowedRoles={[ROLES.STORE_ADMIN]} />
+              }
+            >
+              <Route path="/store" element={<Store />} />
             </Route>
           </Route>
         </Route>
