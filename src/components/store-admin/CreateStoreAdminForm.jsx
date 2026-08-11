@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { storeAdminSchema } from "@/validation/employeeSchema";
+import { storeAdminSchema } from "@/validation/storeAdminSchema";
 import employeeService from "@/services/employee/employeeService";
 
 const CreateStoreAdminForm = ({ onSuccess }) => {

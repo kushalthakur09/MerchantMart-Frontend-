@@ -19,6 +19,7 @@ import StoreAdmins from "@/pages/store-admin/StoreAdmins";
 import Store from "@/pages/store/Store";
 import Stores from "@/pages/store/Stores";
 import Branches from "@/pages/branch/Branches";
+import Employees from "@/pages/employee/Employees";
 
 import { ROLES } from "@/constants/roles";
 
@@ -76,6 +77,19 @@ export default function AppRouter() {
               }
             >
               <Route path="/branches" element={<Branches />} />
+            </Route>
+            <Route
+              element={
+                <RoleProtectedRoute
+                  allowedRoles={[
+                    ROLES.STORE_ADMIN,
+                    ROLES.STORE_MANAGER,
+                    ROLES.BRANCH_MANAGER,
+                  ]}
+                />
+              }
+            >
+              <Route path="/employees" element={<Employees />} />
             </Route>
           </Route>
         </Route>
