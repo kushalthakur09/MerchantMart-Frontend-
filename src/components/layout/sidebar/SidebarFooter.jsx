@@ -1,31 +1,13 @@
-import { LogOut } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { useNavigate } from "react-router-dom";
 
-import useAuth from "@/hooks/useAuth";
 
 const SidebarFooter = () => {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login", { replace: true });
-  };
-
   return (
     <div className="mt-auto border-t pt-4">
-      <div className="flex justify-center">
+      <div className="flex justify-center items-center gap-1">
+        <span>Change Mode :</span>
         <ThemeToggle />
       </div>
-
-      <button
-        onClick={handleLogout}
-        className="mt-4 flex w-full items-center gap-3 rounded-lg px-3 py-2 hover:bg-accent"
-      >
-        <LogOut size={20} />
-        <span>Logout</span>
-      </button>
     </div>
   );
 };

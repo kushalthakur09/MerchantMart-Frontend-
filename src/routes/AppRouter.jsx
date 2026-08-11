@@ -20,6 +20,7 @@ import Store from "@/pages/store/Store";
 import Stores from "@/pages/store/Stores";
 import Branches from "@/pages/branch/Branches";
 import Employees from "@/pages/employee/Employees";
+import Profile from "@/pages/profile/Profile";
 
 import { ROLES } from "@/constants/roles";
 
@@ -35,6 +36,7 @@ export default function AppRouter() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profile" element={<Profile />} />
             <Route
               element={
                 <RoleProtectedRoute
