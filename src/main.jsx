@@ -4,6 +4,7 @@ import "./index.css";
 import App from "./App.jsx";
 import { ThemeProvider } from "./components/ui/theme-provider";
 import { RecoilRoot } from "recoil";
+import { Toaster } from "sonner";
 import AuthInitializer from "./components/auth/AuthInitializer";
 
 createRoot(document.getElementById("root")).render(
@@ -15,6 +16,7 @@ createRoot(document.getElementById("root")).render(
         enableSystem
         disableTransitionOnChange
       >
+        <Toaster richColors position="top-right" />
         <AuthInitializer>
           <App />
         </AuthInitializer>

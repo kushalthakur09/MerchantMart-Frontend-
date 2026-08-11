@@ -13,9 +13,18 @@ const createStoreAdmin = async (data) => {
   return response.data;
 };
 
+const getStoreBranchManagers = async (storeId) => {
+  const response = await api.get(
+    `/api/employee/store/${storeId}?role=ROLE_BRANCH_MANAGER`
+  );
+
+  return response.data;
+};
+
 const employeeService = {
   getStoreEmployees,
   createStoreAdmin,
+  getStoreBranchManagers,
 };
 
 export default employeeService;
