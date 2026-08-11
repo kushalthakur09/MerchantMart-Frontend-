@@ -11,7 +11,7 @@ const CategoryDialog = ({
   open,
   onOpenChange,
   title,
-  defaultValues,
+  initialData,
   onSubmit,
   loading,
 }) => {
@@ -23,7 +23,10 @@ const CategoryDialog = ({
         </DialogHeader>
 
         <CategoryForm
-          defaultValues={defaultValues}
+          key={initialData?.id ?? "create"}
+          defaultValues={{
+            name: initialData?.name || "",
+          }}
           onSubmit={onSubmit}
           loading={loading}
         />
