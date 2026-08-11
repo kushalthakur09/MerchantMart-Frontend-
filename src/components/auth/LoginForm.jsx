@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -30,7 +30,17 @@ const LoginForm = ({ isAdminLogin = false }) => {
 
       navigate("/dashboard");
     } catch (error) {
-      console.error(error.response?.data || error.message);
+      const status = error.response?.status;
+
+      if (status === 401) {
+        toast.error("Invalid email or password");
+      } else if (status === 403) {
+        toast.error("You don't have permission to login here");
+      } else {
+        toast.error(
+          error.response?.data?.message || "Unable to login. Please try again.",
+        );
+      }
     }
   };
 

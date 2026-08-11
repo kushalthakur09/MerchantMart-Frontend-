@@ -18,6 +18,7 @@ import Analytics from "@/pages/analytics/Analytics";
 import StoreAdmins from "@/pages/store-admin/StoreAdmins";
 import Store from "@/pages/store/Store";
 import Stores from "@/pages/store/Stores";
+import Branches from "@/pages/branch/Branches";
 
 import { ROLES } from "@/constants/roles";
 
@@ -62,6 +63,19 @@ export default function AppRouter() {
               }
             >
               <Route path="/store" element={<Store />} />
+            </Route>
+            <Route
+              element={
+                <RoleProtectedRoute
+                  allowedRoles={[
+                    ROLES.STORE_ADMIN,
+                    ROLES.STORE_MANAGER,
+                    ROLES.BRANCH_MANAGER,
+                  ]}
+                />
+              }
+            >
+              <Route path="/branches" element={<Branches />} />
             </Route>
           </Route>
         </Route>
