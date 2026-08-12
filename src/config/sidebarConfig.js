@@ -82,7 +82,7 @@ export const sidebarConfig = [
     label: "Inventory",
     icon: Warehouse,
     to: ROUTES.INVENTORY,
-    roles: [ROLES.STORE_ADMIN, ROLES.BRANCH_MANAGER],
+    roles: [ROLES.BRANCH_MANAGER],
   },
   {
     label: "Orders",
