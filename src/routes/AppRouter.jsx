@@ -8,13 +8,15 @@ import {
 import AppLayout from "@/layouts/AppLayout";
 import AuthLayout from "@/layouts/AuthLayout";
 import ProtectedRoute from "@/routes/ProtectedRoute";
+import RoleProtectedRoute from "@/routes/RoleProtectedRoute";
 
 import Login from "@/components/auth/Login";
+
 import Dashboard from "@/pages/dashboard/Dashboard";
 import NotFound from "@/pages/NotFound";
 import Category from "@/pages/category/Category";
 import Product from "@/pages/product/Product";
-import RoleProtectedRoute from "@/routes/RoleProtectedRoute";
+import Inventory from "@/pages/inventory/Inventory";
 import Analytics from "@/pages/analytics/Analytics";
 import StoreAdmins from "@/pages/store-admin/StoreAdmins";
 import Store from "@/pages/store/Store";
@@ -24,20 +26,27 @@ import Employees from "@/pages/employee/Employees";
 import Profile from "@/pages/profile/Profile";
 
 import { ROLES } from "@/constants/roles";
+import { ROUTES } from "@/config/routes";
 
 export default function AppRouter() {
   return (
     <Router>
       <Routes>
+        {/* Auth */}
         <Route element={<AuthLayout />}>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Login />} />
+          <Route path={ROUTES.LOGIN} element={<Login />} />
+
           <Route path="/admin-login" element={<Login isAdminLogin />} />
+
+          <Route path="/" element={<Navigate to={ROUTES.LOGIN} replace />} />
         </Route>
+
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
+
             <Route path="/profile" element={<Profile />} />
+
             <Route
               element={
                 <RoleProtectedRoute
@@ -50,25 +59,38 @@ export default function AppRouter() {
                 />
               }
             >
-              <Route path="/analytics" element={<Analytics />} />
+              <Route path={ROUTES.ANALYTICS} element={<Analytics />} />
 
-              <Route path="/categories" element={<Category />} />
-              <Route path="/products" element={<Product />} />
+              <Route path={ROUTES.CATEGORIES} element={<Category />} />
+
+              <Route path={ROUTES.PRODUCTS} element={<Product />} />
+
             </Route>
 
+            {/* Admin */}
             <Route
               element={<RoleProtectedRoute allowedRoles={[ROLES.ADMIN]} />}
             >
-              <Route path="/store-admins" element={<StoreAdmins />} />
-              <Route path="/stores" element={<Stores />} />
+              <Route path={ROUTES.STORE_ADMINS} element={<StoreAdmins />} />
+
+              <Route path={ROUTES.STORES} element={<Stores />} />
             </Route>
+
+            {/* Store Admin */}
             <Route
               element={
                 <RoleProtectedRoute allowedRoles={[ROLES.STORE_ADMIN]} />
               }
             >
-              <Route path="/store" element={<Store />} />
+              <Route path={ROUTES.STORE} element={<Store />} />
             </Route>
+
+            {/* Branch Manager */}
+            <Route element={<RoleProtectedRoute allowedRoles={[ROLES.BRANCH_MANAGER]} />}>
+              <Route path={ROUTES.INVENTORY} element={<Inventory />} />
+            </Route>
+
+            {/* Branches */}
             <Route
               element={
                 <RoleProtectedRoute
@@ -80,8 +102,10 @@ export default function AppRouter() {
                 />
               }
             >
-              <Route path="/branches" element={<Branches />} />
+              <Route path={ROUTES.BRANCHES} element={<Branches />} />
             </Route>
+
+            {/* Employees */}
             <Route
               element={
                 <RoleProtectedRoute
@@ -93,10 +117,12 @@ export default function AppRouter() {
                 />
               }
             >
-              <Route path="/employees" element={<Employees />} />
+              <Route path={ROUTES.EMPLOYEES} element={<Employees />} />
             </Route>
           </Route>
         </Route>
+
+        {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>

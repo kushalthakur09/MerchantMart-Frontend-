@@ -11,12 +11,7 @@ import {
   Ban,
 } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import storeService from "@/services/store/storeService";
 import branchService from "@/services/branch/branchService";
@@ -27,6 +22,10 @@ const Dashboard = () => {
   const { user } = useAuth();
 
   const isSuperAdmin = user?.role === "ROLE_ADMIN";
+  const isStoreAdmin = user?.role === "ROLE_STORE_ADMIN";
+  const isBranchManager = user?.role === "ROLE_BRANCH_MANAGER";
+  const isStoreManager = user?.role === "ROLE_STORE_MANAGER";
+  const isBranchCashier = user?.role === "ROLE_BRANCH_CASHIER";
 
   const [store, setStore] = useState(null);
   const [stores, setStores] = useState([]);
@@ -38,8 +37,7 @@ const Dashboard = () => {
     const loadDashboard = async () => {
       try {
         /*
-         * Super Admin does not belong to a store.
-         * Therefore we only load stores for Super Admin.
+         * Super Admin
          */
         if (isSuperAdmin) {
           const response = await storeService.getAllStores();
@@ -53,29 +51,40 @@ const Dashboard = () => {
         }
 
         /*
-         * Store Admin dashboard
+         * Store Admin
          */
-        const storeResponse =
-          await storeService.getStoreByAdmin();
+        if (isStoreAdmin) {
+          const storeResponse = await storeService.getStoreByAdmin();
 
-        setStore(storeResponse);
+          setStore(storeResponse);
 
-        const [branchResponse, employeeResponse] =
-          await Promise.all([
-            branchService.getBranchesByStore(
-              storeResponse.id
-            ),
-            employeeService.getStoreEmployees(
-              storeResponse.id
-            ),
+          const [branchResponse, employeeResponse] = await Promise.all([
+            branchService.getBranchesByStore(storeResponse.id),
+            employeeService.getStoreEmployees(storeResponse.id),
           ]);
 
-        setBranches(branchResponse);
-        setEmployees(employeeResponse);
+          setBranches(branchResponse);
+          setEmployees(employeeResponse);
+
+          return;
+        }
+
+        /*
+         * Branch Manager / Store Manager / Branch Cashier
+         *
+         * They do not own a store.
+         * Therefore we must NOT call:
+         *
+         * storeService.getStoreByAdmin()
+         */
+
+        setStore(null);
+        setStores([]);
+        setBranches([]);
+        setEmployees([]);
       } catch (error) {
         toast.error(
-          error.response?.data?.message ||
-            "Failed to load dashboard."
+          error.response?.data?.message || "Failed to load dashboard.",
         );
       } finally {
         setLoading(false);
@@ -83,7 +92,13 @@ const Dashboard = () => {
     };
 
     loadDashboard();
-  }, [isSuperAdmin]);
+  }, [
+    isSuperAdmin,
+    isStoreAdmin,
+    isBranchManager,
+    isStoreManager,
+    isBranchCashier,
+  ]);
 
   if (loading) {
     return (
@@ -105,13 +120,17 @@ const Dashboard = () => {
     return <SuperAdminDashboard stores={stores} />;
   }
 
-  return (
-    <StoreAdminDashboard
-      store={store}
-      branches={branches}
-      employees={employees}
-    />
-  );
+  if (isStoreAdmin) {
+    return (
+      <StoreAdminDashboard
+        store={store}
+        branches={branches}
+        employees={employees}
+      />
+    );
+  }
+
+  return <EmployeeDashboard user={user} />;
 };
 
 /* =========================================================
@@ -122,19 +141,19 @@ const SuperAdminDashboard = ({ stores }) => {
   const totalStores = stores.length;
 
   const activeStores = stores.filter(
-    (store) => store.status === "ACTIVE"
+    (store) => store.status === "ACTIVE",
   ).length;
 
   const pendingStores = stores.filter(
-    (store) => store.status === "PENDING"
+    (store) => store.status === "PENDING",
   ).length;
 
   const inactiveStores = stores.filter(
-    (store) => store.status === "INACTIVE"
+    (store) => store.status === "INACTIVE",
   ).length;
 
   const blockedStores = stores.filter(
-    (store) => store.status === "BLOCKED"
+    (store) => store.status === "BLOCKED",
   ).length;
 
   const stats = [
@@ -173,9 +192,7 @@ const SuperAdminDashboard = ({ stores }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Dashboard
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
 
         <p className="mt-1 text-muted-foreground">
           Welcome back. Here's an overview of your stores.
@@ -209,9 +226,7 @@ const SuperAdminDashboard = ({ stores }) => {
                       {stat.title}
                     </p>
 
-                    <p className="mt-2 text-2xl font-semibold">
-                      {stat.value}
-                    </p>
+                    <p className="mt-2 text-2xl font-semibold">{stat.value}</p>
 
                     <p className="mt-1 text-xs text-muted-foreground">
                       {stat.description}
@@ -268,9 +283,7 @@ const SuperAdminDashboard = ({ stores }) => {
                     className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-accent/50"
                   >
                     <div>
-                      <p className="font-medium">
-                        {store.brand}
-                      </p>
+                      <p className="font-medium">{store.brand}</p>
 
                       <p className="text-sm text-muted-foreground">
                         {store.storeType}
@@ -293,24 +306,17 @@ const SuperAdminDashboard = ({ stores }) => {
    STORE ADMIN DASHBOARD
 ========================================================= */
 
-const StoreAdminDashboard = ({
-  store,
-  branches,
-  employees,
-}) => {
+const StoreAdminDashboard = ({ store, branches, employees }) => {
   const storeManagers = employees.filter(
-    (employee) =>
-      employee.role === "ROLE_STORE_MANAGER"
+    (employee) => employee.role === "ROLE_STORE_MANAGER",
   ).length;
 
   const branchManagers = employees.filter(
-    (employee) =>
-      employee.role === "ROLE_BRANCH_MANAGER"
+    (employee) => employee.role === "ROLE_BRANCH_MANAGER",
   ).length;
 
   const branchCashiers = employees.filter(
-    (employee) =>
-      employee.role === "ROLE_BRANCH_CASHIER"
+    (employee) => employee.role === "ROLE_BRANCH_CASHIER",
   ).length;
 
   const stats = [
@@ -349,13 +355,10 @@ const StoreAdminDashboard = ({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Dashboard
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
 
         <p className="mt-1 text-muted-foreground">
-          Welcome back. Here's what's happening with your
-          store.
+          Welcome back. Here's what's happening with your store.
         </p>
       </motion.div>
 
@@ -394,9 +397,7 @@ const StoreAdminDashboard = ({
                       {stat.title}
                     </p>
 
-                    <p className="mt-2 text-2xl font-semibold">
-                      {stat.value}
-                    </p>
+                    <p className="mt-2 text-2xl font-semibold">{stat.value}</p>
 
                     <p className="mt-1 text-xs text-muted-foreground">
                       {stat.description}
@@ -436,28 +437,15 @@ const StoreAdminDashboard = ({
 
           <CardContent>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              <InfoItem
-                label="Store Name"
-                value={store?.brand || "N/A"}
-              />
+              <InfoItem label="Store Name" value={store?.brand || "N/A"} />
 
-              <InfoItem
-                label="Store Type"
-                value={store?.storeType || "N/A"}
-              />
+              <InfoItem label="Store Type" value={store?.storeType || "N/A"} />
 
-              <InfoItem
-                label="Status"
-                value={store?.status || "N/A"}
-                status
-              />
+              <InfoItem label="Status" value={store?.status || "N/A"} status />
 
               <InfoItem
                 label="Description"
-                value={
-                  store?.description ||
-                  "No description"
-                }
+                value={store?.description || "No description"}
               />
             </div>
           </CardContent>
@@ -555,9 +543,7 @@ const StoreAdminDashboard = ({
                     className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-accent/50"
                   >
                     <div>
-                      <p className="font-medium">
-                        {branch.name}
-                      </p>
+                      <p className="font-medium">{branch.name}</p>
 
                       <p className="text-sm text-muted-foreground">
                         {branch.address}
@@ -591,6 +577,43 @@ const StoreAdminDashboard = ({
 };
 
 /* =========================================================
+   ENPLOYEE DASHBOARD
+========================================================= */
+const EmployeeDashboard = ({ user }) => {
+  return (
+    <div className="space-y-8">
+      <motion.div
+        initial={{ opacity: 0, y: -15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Dashboard
+        </h1>
+
+        <p className="mt-1 text-muted-foreground">
+          Welcome back, {user?.fullUserName || "User"}.
+        </p>
+      </motion.div>
+
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-sm text-muted-foreground">
+            Role
+          </p>
+
+          <p className="mt-1 text-lg font-semibold">
+            {user?.role
+              ?.replace("ROLE_", "")
+              .replaceAll("_", " ")}
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+/* =========================================================
    SHARED COMPONENTS
 ========================================================= */
 
@@ -605,15 +628,13 @@ const StoreStatus = ({ status }) => {
     INACTIVE:
       "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
 
-    BLOCKED:
-      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+    BLOCKED: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   };
 
   return (
     <span
       className={`rounded-full px-3 py-1 text-xs font-medium ${
-        statusStyles[status] ||
-        "bg-muted text-muted-foreground"
+        statusStyles[status] || "bg-muted text-muted-foreground"
       }`}
     >
       {status || "UNKNOWN"}
@@ -621,33 +642,21 @@ const StoreStatus = ({ status }) => {
   );
 };
 
-const InfoItem = ({
-  label,
-  value,
-  status = false,
-}) => {
+const InfoItem = ({ label, value, status = false }) => {
   return (
     <div>
-      <p className="text-sm text-muted-foreground">
-        {label}
-      </p>
+      <p className="text-sm text-muted-foreground">{label}</p>
 
       {status ? (
         <StoreStatus status={value} />
       ) : (
-        <p className="mt-1 font-medium">
-          {value}
-        </p>
+        <p className="mt-1 font-medium">{value}</p>
       )}
     </div>
   );
 };
 
-const RoleCard = ({
-  icon: Icon,
-  title,
-  value,
-}) => {
+const RoleCard = ({ icon: Icon, title, value }) => {
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
@@ -659,13 +668,9 @@ const RoleCard = ({
       </div>
 
       <div>
-        <p className="text-sm text-muted-foreground">
-          {title}
-        </p>
+        <p className="text-sm text-muted-foreground">{title}</p>
 
-        <p className="text-2xl font-semibold">
-          {value}
-        </p>
+        <p className="text-2xl font-semibold">{value}</p>
       </div>
     </motion.div>
   );
