@@ -13,6 +13,7 @@ import Login from "@/components/auth/Login";
 import Dashboard from "@/pages/dashboard/Dashboard";
 import NotFound from "@/pages/NotFound";
 import Category from "@/pages/category/Category";
+import Product from "@/pages/product/Product";
 import RoleProtectedRoute from "@/routes/RoleProtectedRoute";
 import Analytics from "@/pages/analytics/Analytics";
 import StoreAdmins from "@/pages/store-admin/StoreAdmins";
@@ -52,6 +53,7 @@ export default function AppRouter() {
               <Route path="/analytics" element={<Analytics />} />
 
               <Route path="/categories" element={<Category />} />
+              <Route path="/products" element={<Product />} />
             </Route>
 
             <Route
