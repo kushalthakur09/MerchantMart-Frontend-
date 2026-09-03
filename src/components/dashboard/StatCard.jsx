@@ -15,7 +15,7 @@ const StatCard = ({
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}`
-      : Number(value || 0).toLocaleString("en-IN");
+      : value;
 
   return (
     <motion.div
@@ -45,9 +45,11 @@ const StatCard = ({
               )}
             </div>
 
-            <div className="shrink-0 rounded-lg bg-primary/10 p-3">
-              <Icon className="h-5 w-5 text-primary" />
-            </div>
+            {Icon && (
+              <div className="shrink-0 rounded-lg bg-primary/10 p-3">
+                <Icon className="h-5 w-5 text-primary" />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
