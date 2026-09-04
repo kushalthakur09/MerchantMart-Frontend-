@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 
 import useAuth from "@/hooks/useAuth";
 
-import branchService from "@/services/branch/branchService";
 import productService from "@/services/product/productService";
 import inventoryService from "@/services/inventory/inventoryService";
 
@@ -21,63 +20,28 @@ import InventoryDialog from "@/components/inventory/InventoryDialog";
 const Inventory = () => {
   const { user } = useAuth();
 
-  const [branches, setBranches] = useState([]);
   const [products, setProducts] = useState([]);
   const [inventory, setInventory] = useState([]);
-
-  const [selectedBranchId, setSelectedBranchId] =
-    useState("");
 
   const [search, setSearch] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [openDialog, setOpenDialog] =
-    useState(false);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editingInventory, setEditingInventory] = useState(null);
 
-  const [editingInventory, setEditingInventory] =
-    useState(null);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [selectedInventory, setSelectedInventory] = useState(null);
 
-  const [openDeleteDialog, setOpenDeleteDialog] =
-    useState(false);
-
-  const [selectedInventory, setSelectedInventory] =
-    useState(null);
-
-  const loadBranches = async () => {
-    if (!user?.storeId) return;
-
-    try {
-      const response =
-        await branchService.getBranchesByStore(
-          user.storeId
-        );
-
-      setBranches(response);
-
-      if (response.length > 0) {
-        setSelectedBranchId(
-          String(response[0].id)
-        );
-      }
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to load branches."
-      );
-    }
-  };
+  const branchId = user?.branchId;
+  const storeId = user?.storeId;
 
   const loadProducts = async () => {
-    if (!user?.storeId) return;
+    if (!storeId) return;
 
     try {
-      const response =
-        await productService.getByStore(
-          user.storeId
-        );
-
+      const response = await productService.getByStore(storeId);
       setProducts(response);
     } catch (error) {
       toast.error(
@@ -88,7 +52,7 @@ const Inventory = () => {
   };
 
   const loadInventory = async () => {
-    if (!selectedBranchId) {
+    if (!branchId) {
       setInventory([]);
       return;
     }
@@ -96,10 +60,7 @@ const Inventory = () => {
     try {
       setLoading(true);
 
-      const response =
-        await inventoryService.getByBranch(
-          selectedBranchId
-        );
+      const response = await inventoryService.getByBranch(branchId);
 
       setInventory(response);
     } catch (error) {
@@ -117,21 +78,17 @@ const Inventory = () => {
       setLoading(true);
 
       await Promise.all([
-        loadBranches(),
         loadProducts(),
+        loadInventory(),
       ]);
 
       setLoading(false);
     };
 
-    loadInitialData();
-  }, [user?.storeId]);
-
-  useEffect(() => {
-    if (selectedBranchId) {
-      loadInventory();
+    if (branchId) {
+      loadInitialData();
     }
-  }, [selectedBranchId]);
+  }, [branchId, storeId]);
 
   const handleCreate = () => {
     setEditingInventory(null);
@@ -160,7 +117,7 @@ const Inventory = () => {
         );
       } else {
         await inventoryService.create({
-          branchId: Number(selectedBranchId),
+          branchId: Number(branchId),
           productId: Number(data.productId),
           quantity: Number(data.quantity),
         });
@@ -178,9 +135,7 @@ const Inventory = () => {
       toast.error(
         error.response?.data?.message ||
           `Failed to ${
-            editingInventory
-              ? "update"
-              : "add"
+            editingInventory ? "update" : "add"
           } inventory.`
       );
     } finally {
@@ -212,20 +167,18 @@ const Inventory = () => {
     }
   };
 
-  const filteredInventory = inventory.filter(
-    (item) => {
-      const keyword = search.toLowerCase();
+  const filteredInventory = inventory.filter((item) => {
+    const keyword = search.toLowerCase();
 
-      return (
-        item.product?.name
-          ?.toLowerCase()
-          .includes(keyword) ||
-        item.product?.sku
-          ?.toLowerCase()
-          .includes(keyword)
-      );
-    }
-  );
+    return (
+      item.product?.name
+        ?.toLowerCase()
+        .includes(keyword) ||
+      item.product?.sku
+        ?.toLowerCase()
+        .includes(keyword)
+    );
+  });
 
   const columns = [
     {
@@ -249,6 +202,44 @@ const Inventory = () => {
     {
       header: "Quantity",
       accessor: "quantity",
+      cell: (row) => (
+        <span
+          className={
+            row.quantity <= 10
+              ? "font-semibold text-destructive"
+              : "font-medium"
+          }
+        >
+          {row.quantity}
+        </span>
+      ),
+    },
+    {
+      header: "Status",
+      accessor: "status",
+      cell: (row) => {
+        if (row.quantity === 0) {
+          return (
+            <span className="text-sm font-medium text-destructive">
+              Out of Stock
+            </span>
+          );
+        }
+
+        if (row.quantity <= 10) {
+          return (
+            <span className="text-sm font-medium text-orange-600">
+              Low Stock
+            </span>
+          );
+        }
+
+        return (
+          <span className="text-sm font-medium text-green-600">
+            In Stock
+          </span>
+        );
+      },
     },
     {
       header: "Last Updated",
@@ -290,9 +281,23 @@ const Inventory = () => {
     },
   ];
 
-  if (loading && branches.length === 0) {
+  if (loading) {
     return (
       <LoadingSpinner text="Loading inventory..." />
+    );
+  }
+
+  if (!branchId) {
+    return (
+      <div className="p-6">
+        <h1 className="text-xl font-semibold">
+          Inventory
+        </h1>
+
+        <p className="mt-2 text-muted-foreground">
+          No branch is assigned to your account.
+        </p>
+      </div>
     );
   }
 
@@ -300,58 +305,31 @@ const Inventory = () => {
     <div className="space-y-6">
       <PageHeader
         title="Inventory"
-        description="Manage stock across your branches."
+        description="Manage stock for your branch."
         buttonLabel="Add Inventory"
         onButtonClick={handleCreate}
       />
 
-      <div className="flex flex-col gap-4 md:flex-row">
-        <select
-          value={selectedBranchId}
-          onChange={(e) =>
-            setSelectedBranchId(e.target.value)
-          }
-          className="flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm md:max-w-xs"
-        >
-          <option value="">
-            Select Branch
-          </option>
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="Search inventory..."
+      />
 
-          {branches.map((branch) => (
-            <option
-              key={branch.id}
-              value={branch.id}
-            >
-              {branch.name}
-            </option>
-          ))}
-        </select>
-
-        <SearchBar
-          value={search}
-          onChange={setSearch}
-          placeholder="Search inventory..."
-        />
-      </div>
-
-      {loading ? (
-        <LoadingSpinner text="Loading inventory..." />
-      ) : (
-        <DataTable
-          columns={columns}
-          data={filteredInventory}
-          emptyTitle={
-            search
-              ? "No Inventory Found"
-              : "No Inventory Yet"
-          }
-          emptyDescription={
-            search
-              ? "Try a different search term."
-              : "Add stock to this branch."
-          }
-        />
-      )}
+      <DataTable
+        columns={columns}
+        data={filteredInventory}
+        emptyTitle={
+          search
+            ? "No Inventory Found"
+            : "No Inventory Yet"
+        }
+        emptyDescription={
+          search
+            ? "Try a different search term."
+            : "Add stock to this branch."
+        }
+      />
 
       {filteredInventory.length > 0 && (
         <Pagination
