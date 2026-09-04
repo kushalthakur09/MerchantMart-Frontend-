@@ -5,6 +5,11 @@ const getBranchesByStore = async (storeId) => {
   return response.data;
 };
 
+const getBranchById = async (id) => {
+  const response = await api.get(`/api/branch/${id}`);
+  return response.data;
+};
+
 const createBranch = async (data) => {
   const response = await api.post("/api/branch", data);
   return response.data;
@@ -15,16 +20,23 @@ const updateBranch = async (id, data) => {
   return response.data;
 };
 
-const deleteBranch = async (id) => {
-  const response = await api.delete(`/api/branch/${id}`);
+const deactivateBranch = async (id) => {
+  const response = await api.put(`/api/branch/${id}/deactivate`);
+  return response.data;
+};
+
+const activateBranch = async (id) => {
+  const response = await api.put(`/api/branch/${id}/activate`);
   return response.data;
 };
 
 const branchService = {
   getBranchesByStore,
+  getBranchById,
   createBranch,
   updateBranch,
-  deleteBranch,
+  deactivateBranch,
+  activateBranch,
 };
 
 export default branchService;
