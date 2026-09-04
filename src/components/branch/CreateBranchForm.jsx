@@ -41,9 +41,16 @@ const CreateBranchForm = ({ onSuccess }) => {
           storeResponse.id,
         );
 
-        setManagers(managerResponse);
+        const availableManagers = managerResponse.filter(
+          (manager) => !manager.branchId && !manager.branch,
+        );
+
+        setManagers(availableManagers);
       } catch (error) {
-        toast.error(error.response?.data?.message || "Failed to load store or branch managers.");
+        toast.error(
+          error.response?.data?.message ||
+            "Failed to load store or branch managers.",
+        );
       } finally {
         setLoadingData(false);
       }
