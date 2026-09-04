@@ -64,7 +64,7 @@ export const sidebarConfig = [
     label: "Employees",
     icon: UserCog,
     to: ROUTES.EMPLOYEES,
-    roles: [ROLES.STORE_ADMIN],
+    roles: [ROLES.STORE_ADMIN, ROLES.STORE_MANAGER, ROLES.BRANCH_MANAGER],
   },
   {
     label: "Categories",

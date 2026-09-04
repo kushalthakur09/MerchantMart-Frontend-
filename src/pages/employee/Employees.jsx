@@ -18,8 +18,11 @@ import CreateEmployeeForm from "@/components/employee/CreateEmployeeForm";
 import employeeService from "@/services/employee/employeeService";
 import storeService from "@/services/store/storeService";
 import EditEmployeeForm from "@/components/employee/EditEmployeeForm";
+import useAuth from "@/hooks/useAuth";
 
 const Employees = () => {
+  const { user } = useAuth();
+
   const [employees, setEmployees] = useState([]);
   const [store, setStore] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -29,8 +32,34 @@ const Employees = () => {
 
   const [loading, setLoading] = useState(true);
 
+  const isBranchManager =
+    user?.role === "ROLE_BRANCH_MANAGER";
+
   const fetchEmployees = async () => {
     try {
+      setLoading(true);
+
+      if (isBranchManager) {
+        if (!user?.branchId) {
+          throw new Error("Branch information is missing.");
+        }
+
+        const employeeResponse =
+          await employeeService.getBranchEmployees(
+            user.branchId,
+            "ROLE_BRANCH_CASHIER"
+          );
+
+        setEmployees(employeeResponse);
+
+        setStore({
+          brand: "Your Branch",
+          status: "ACTIVE",
+        });
+
+        return;
+      }
+
       const storeResponse =
         await storeService.getStoreByAdmin();
 
@@ -45,6 +74,7 @@ const Employees = () => {
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
+          error.message ||
           "Failed to load employees."
       );
     } finally {
@@ -53,8 +83,10 @@ const Employees = () => {
   };
 
   useEffect(() => {
-    fetchEmployees();
-  }, []);
+    if (user) {
+      fetchEmployees();
+    }
+  }, [user]);
 
   const handleCreated = (employee) => {
     setEmployees((current) => [...current, employee]);
@@ -120,7 +152,9 @@ const Employees = () => {
           </h1>
 
           <p className="text-muted-foreground">
-            Manage employees for {store.brand}.
+            {isBranchManager
+              ? "Manage employees for your branch."
+              : `Manage employees for ${store.brand}.`}
           </p>
         </div>
 
@@ -144,6 +178,7 @@ const Employees = () => {
           </h2>
 
           <CreateEmployeeForm
+            user={user}
             onSuccess={handleCreated}
           />
         </div>
@@ -176,7 +211,7 @@ const Employees = () => {
 
           <p className="mt-2 text-sm text-muted-foreground">
             Create your first employee to start
-            managing your store.
+            managing your {isBranchManager ? "branch" : "store"}.
           </p>
         </div>
       ) : (
@@ -217,7 +252,9 @@ const Employees = () => {
                     Branch:
                   </span>{" "}
                   {employee.branch?.name ||
-                    "Store level"}
+                    (isBranchManager
+                      ? "Your Branch"
+                      : "Store level")}
                 </p>
               </div>
 
