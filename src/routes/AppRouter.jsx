@@ -24,6 +24,7 @@ import Stores from "@/pages/store/Stores";
 import Branches from "@/pages/branch/Branches";
 import Employees from "@/pages/employee/Employees";
 import Profile from "@/pages/profile/Profile";
+import Customer from "@/pages/customer/Customer";
 
 import { ROLES } from "@/constants/roles";
 import { ROUTES } from "@/config/routes";
@@ -36,17 +37,27 @@ export default function AppRouter() {
         <Route element={<AuthLayout />}>
           <Route path={ROUTES.LOGIN} element={<Login />} />
 
-          <Route path="/admin-login" element={<Login isAdminLogin />} />
+          <Route
+            path="/admin-login"
+            element={<Login isAdminLogin />}
+          />
 
-          <Route path="/" element={<Navigate to={ROUTES.LOGIN} replace />} />
+          <Route
+            path="/"
+            element={<Navigate to={ROUTES.LOGIN} replace />}
+          />
         </Route>
 
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
+            <Route
+              path={ROUTES.DASHBOARD}
+              element={<Dashboard />}
+            />
 
             <Route path="/profile" element={<Profile />} />
 
+            {/* Analytics, Categories, Products */}
             <Route
               element={
                 <RoleProtectedRoute
@@ -59,35 +70,86 @@ export default function AppRouter() {
                 />
               }
             >
-              <Route path={ROUTES.ANALYTICS} element={<Analytics />} />
+              <Route
+                path={ROUTES.ANALYTICS}
+                element={<Analytics />}
+              />
 
-              <Route path={ROUTES.CATEGORIES} element={<Category />} />
+              <Route
+                path={ROUTES.CATEGORIES}
+                element={<Category />}
+              />
 
-              <Route path={ROUTES.PRODUCTS} element={<Product />} />
+              <Route
+                path={ROUTES.PRODUCTS}
+                element={<Product />}
+              />
+            </Route>
 
+            {/* Customers */}
+            <Route
+              element={
+                <RoleProtectedRoute
+                  allowedRoles={[
+                    ROLES.STORE_ADMIN,
+                    ROLES.STORE_MANAGER,
+                    ROLES.BRANCH_MANAGER,
+                    ROLES.BRANCH_CASHIER,
+                  ]}
+                />
+              }
+            >
+              <Route
+                path={ROUTES.CUSTOMERS}
+                element={<Customer />}
+              />
             </Route>
 
             {/* Admin */}
             <Route
-              element={<RoleProtectedRoute allowedRoles={[ROLES.ADMIN]} />}
+              element={
+                <RoleProtectedRoute
+                  allowedRoles={[ROLES.ADMIN]}
+                />
+              }
             >
-              <Route path={ROUTES.STORE_ADMINS} element={<StoreAdmins />} />
+              <Route
+                path={ROUTES.STORE_ADMINS}
+                element={<StoreAdmins />}
+              />
 
-              <Route path={ROUTES.STORES} element={<Stores />} />
+              <Route
+                path={ROUTES.STORES}
+                element={<Stores />}
+              />
             </Route>
 
             {/* Store Admin */}
             <Route
               element={
-                <RoleProtectedRoute allowedRoles={[ROLES.STORE_ADMIN]} />
+                <RoleProtectedRoute
+                  allowedRoles={[ROLES.STORE_ADMIN]}
+                />
               }
             >
-              <Route path={ROUTES.STORE} element={<Store />} />
+              <Route
+                path={ROUTES.STORE}
+                element={<Store />}
+              />
             </Route>
 
             {/* Branch Manager */}
-            <Route element={<RoleProtectedRoute allowedRoles={[ROLES.BRANCH_MANAGER]} />}>
-              <Route path={ROUTES.INVENTORY} element={<Inventory />} />
+            <Route
+              element={
+                <RoleProtectedRoute
+                  allowedRoles={[ROLES.BRANCH_MANAGER]}
+                />
+              }
+            >
+              <Route
+                path={ROUTES.INVENTORY}
+                element={<Inventory />}
+              />
             </Route>
 
             {/* Branches */}
@@ -102,7 +164,10 @@ export default function AppRouter() {
                 />
               }
             >
-              <Route path={ROUTES.BRANCHES} element={<Branches />} />
+              <Route
+                path={ROUTES.BRANCHES}
+                element={<Branches />}
+              />
             </Route>
 
             {/* Employees */}
@@ -117,7 +182,10 @@ export default function AppRouter() {
                 />
               }
             >
-              <Route path={ROUTES.EMPLOYEES} element={<Employees />} />
+              <Route
+                path={ROUTES.EMPLOYEES}
+                element={<Employees />}
+              />
             </Route>
           </Route>
         </Route>
