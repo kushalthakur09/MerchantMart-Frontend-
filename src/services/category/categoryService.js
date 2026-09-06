@@ -15,8 +15,13 @@ const update = async (id, category) => {
   return response.data;
 };
 
-const remove = async (id) => {
-  const response = await api.delete(`/api/categories/${id}`);
+const deactivate = async (id) => {
+  const response = await api.put(`/api/categories/${id}/deactivate`);
+  return response.data;
+};
+
+const activate = async (id) => {
+  const response = await api.put(`/api/categories/${id}/activate`);
   return response.data;
 };
 
@@ -24,7 +29,8 @@ const categoryService = {
   getByStore,
   create,
   update,
-  remove,
+  deactivate,
+  activate,
 };
 
 export default categoryService;

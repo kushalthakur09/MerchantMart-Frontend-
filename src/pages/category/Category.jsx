@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Power } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import PageHeader from "@/components/common/PageHeader/PageHeader";
 import SearchBar from "@/components/common/SearchBar/SearchBar";
 import DataTable from "@/components/common/DataTable/DataTable";
 import Pagination from "@/components/common/Pagination/Pagination";
-import DeleteDialog from "@/components/common/DeleteDialog/DeleteDialog";
+import StatusDialog from "@/components/common/StatusDialog/StatusDialog";
 import CategoryDialog from "@/components/category/CategoryDialog";
 
 const Category = () => {
@@ -24,6 +24,7 @@ const Category = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [toggling, setToggling] = useState(false);
 
   const [openCategoryDialog, setOpenCategoryDialog] =
     useState(false);
@@ -31,7 +32,7 @@ const Category = () => {
   const [editingCategory, setEditingCategory] =
     useState(null);
 
-  const [openDeleteDialog, setOpenDeleteDialog] =
+  const [openStatusDialog, setOpenStatusDialog] =
     useState(false);
 
   const [selectedCategory, setSelectedCategory] =
@@ -119,29 +120,48 @@ const Category = () => {
     }
   };
 
-  const handleDeleteCategory = async () => {
+  const handleToggleStatus = async () => {
     if (!selectedCategory) {
       return;
     }
 
     try {
-      await categoryService.remove(
-        selectedCategory.id
-      );
+      setToggling(true);
+
+      const isActive =
+        selectedCategory.status === "ACTIVE";
+
+      if (isActive) {
+        await categoryService.deactivate(
+          selectedCategory.id
+        );
+      } else {
+        await categoryService.activate(
+          selectedCategory.id
+        );
+      }
 
       toast.success(
-        "Category deleted successfully."
+        isActive
+          ? "Category deactivated successfully."
+          : "Category activated successfully."
       );
 
-      setOpenDeleteDialog(false);
+      setOpenStatusDialog(false);
       setSelectedCategory(null);
 
       await loadCategories();
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-          "Failed to delete category."
+          `Failed to ${
+            selectedCategory.status === "ACTIVE"
+              ? "deactivate"
+              : "activate"
+          } category.`
       );
+    } finally {
+      setToggling(false);
     }
   };
 
@@ -156,6 +176,16 @@ const Category = () => {
     {
       header: "Category Name",
       accessor: "name",
+    },
+    {
+      header: "Status",
+      accessor: "status",
+
+      cell: (row) => (
+        <div className="rounded-full border px-3 py-1 text-xs font-medium w-fit">
+          {row.status || "ACTIVE"}
+        </div>
+      ),
     },
     {
       header: "Actions",
@@ -175,14 +205,18 @@ const Category = () => {
           </Button>
 
           <Button
-            variant="destructive"
+            variant={
+              row.status === "ACTIVE"
+                ? "destructive"
+                : "outline"
+            }
             size="icon"
             onClick={() => {
               setSelectedCategory(row);
-              setOpenDeleteDialog(true);
+              setOpenStatusDialog(true);
             }}
           >
-            <Trash2 size={16} />
+            <Power size={16} />
           </Button>
         </div>
       ),
@@ -253,24 +287,38 @@ const Category = () => {
         onSubmit={handleSaveCategory}
       />
 
-      {/* Delete Confirmation */}
+      {/* Activate / Deactivate Confirmation */}
 
-      <DeleteDialog
-        open={openDeleteDialog}
+      <StatusDialog
+        open={openStatusDialog}
         onOpenChange={(open) => {
-          setOpenDeleteDialog(open);
+          if (!toggling) {
+            setOpenStatusDialog(open);
 
-          if (!open) {
-            setSelectedCategory(null);
+            if (!open) {
+              setSelectedCategory(null);
+            }
           }
         }}
-        title="Delete Category"
+        action={
+          selectedCategory?.status === "ACTIVE"
+            ? "deactivate"
+            : "activate"
+        }
+        title={
+          selectedCategory?.status === "ACTIVE"
+            ? "Deactivate Category"
+            : "Activate Category"
+        }
         description={
           selectedCategory
-            ? `Are you sure you want to delete "${selectedCategory.name}"? This action cannot be undone.`
-            : "Are you sure you want to delete this category?"
+            ? selectedCategory.status === "ACTIVE"
+              ? `Are you sure you want to deactivate "${selectedCategory.name}"?`
+              : `Are you sure you want to activate "${selectedCategory.name}"?`
+            : ""
         }
-        onConfirm={handleDeleteCategory}
+        onConfirm={handleToggleStatus}
+        loading={toggling}
       />
     </div>
   );
