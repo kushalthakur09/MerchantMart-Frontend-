@@ -26,9 +26,17 @@ const update = async (id, product) => {
   return response.data;
 };
 
-const remove = async (id) => {
-  const response = await api.delete(
-    `/api/product/${id}`
+const deactivate = async (id) => {
+  const response = await api.put(
+    `/api/product/${id}/deactivate`
+  );
+
+  return response.data;
+};
+
+const activate = async (id) => {
+  const response = await api.put(
+    `/api/product/${id}/activate`
   );
 
   return response.data;
@@ -49,7 +57,8 @@ const productService = {
   getByStore,
   create,
   update,
-  remove,
+  deactivate,
+  activate,
   search,
 };
 

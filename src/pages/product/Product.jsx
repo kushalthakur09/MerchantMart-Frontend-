@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Power } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import PageHeader from "@/components/common/PageHeader/PageHeader";
 import SearchBar from "@/components/common/SearchBar/SearchBar";
 import DataTable from "@/components/common/DataTable/DataTable";
 import Pagination from "@/components/common/Pagination/Pagination";
-import DeleteDialog from "@/components/common/DeleteDialog/DeleteDialog";
+import StatusDialog from "@/components/common/StatusDialog/StatusDialog";
 import ProductDialog from "@/components/product/ProductDialog";
 
 const Product = () => {
@@ -30,11 +30,13 @@ const Product = () => {
   const [editingProduct, setEditingProduct] =
     useState(null);
 
-  const [openDeleteDialog, setOpenDeleteDialog] =
+  const [openStatusDialog, setOpenStatusDialog] =
     useState(false);
 
   const [selectedProduct, setSelectedProduct] =
     useState(null);
+
+  const [toggling, setToggling] = useState(false);
 
   const loadProducts = async () => {
     if (!user?.storeId) return;
@@ -120,27 +122,57 @@ const Product = () => {
     }
   };
 
-  const handleDeleteProduct = async () => {
+  const handleToggleStatus = async () => {
     if (!selectedProduct) return;
 
     try {
-      await productService.remove(
-        selectedProduct.id
+      setToggling(true);
+
+      const isActive =
+        selectedProduct.status === "ACTIVE";
+
+      if (isActive) {
+        await productService.deactivate(
+          selectedProduct.id
+        );
+      } else {
+        await productService.activate(
+          selectedProduct.id
+        );
+      }
+
+      setProducts((current) =>
+        current.map((product) =>
+          product.id === selectedProduct.id
+            ? {
+                ...product,
+                status: isActive
+                  ? "INACTIVE"
+                  : "ACTIVE",
+              }
+            : product
+        )
       );
 
-      toast.success(
-        "Product deleted successfully."
-      );
-
-      setOpenDeleteDialog(false);
+      setOpenStatusDialog(false);
       setSelectedProduct(null);
 
-      await loadProducts();
+      toast.success(
+        isActive
+          ? "Product deactivated successfully."
+          : "Product activated successfully."
+      );
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-          "Failed to delete product."
+          `Failed to ${
+            selectedProduct.status === "ACTIVE"
+              ? "deactivate"
+              : "activate"
+          } product.`
       );
+    } finally {
+      setToggling(false);
     }
   };
 
@@ -184,6 +216,11 @@ const Product = () => {
       cell: (row) => `₹${row.sellingPrice}`,
     },
     {
+      header: "Status",
+      accessor: "status",
+      cell: (row) => row.status || "ACTIVE",
+    },
+    {
       header: "Actions",
       accessor: "actions",
       className: "text-right",
@@ -201,14 +238,18 @@ const Product = () => {
           </Button>
 
           <Button
-            variant="destructive"
+            variant={
+              row.status === "ACTIVE"
+                ? "destructive"
+                : "outline"
+            }
             size="icon"
             onClick={() => {
               setSelectedProduct(row);
-              setOpenDeleteDialog(true);
+              setOpenStatusDialog(true);
             }}
           >
-            <Trash2 size={16} />
+            <Power size={16} />
           </Button>
         </div>
       ),
@@ -277,22 +318,36 @@ const Product = () => {
         onSubmit={handleSaveProduct}
       />
 
-      <DeleteDialog
-        open={openDeleteDialog}
+      <StatusDialog
+        open={openStatusDialog}
         onOpenChange={(open) => {
-          setOpenDeleteDialog(open);
+          if (!toggling) {
+            setOpenStatusDialog(open);
 
-          if (!open) {
-            setSelectedProduct(null);
+            if (!open) {
+              setSelectedProduct(null);
+            }
           }
         }}
-        title="Delete Product"
+        action={
+          selectedProduct?.status === "ACTIVE"
+            ? "deactivate"
+            : "activate"
+        }
+        title={
+          selectedProduct?.status === "ACTIVE"
+            ? "Deactivate Product"
+            : "Activate Product"
+        }
         description={
           selectedProduct
-            ? `Are you sure you want to delete "${selectedProduct.name}"? This action cannot be undone.`
-            : "Are you sure you want to delete this product?"
+            ? selectedProduct.status === "ACTIVE"
+              ? `Are you sure you want to deactivate "${selectedProduct.name}"? This product will no longer be active.`
+              : `Are you sure you want to activate "${selectedProduct.name}"?`
+            : ""
         }
-        onConfirm={handleDeleteProduct}
+        onConfirm={handleToggleStatus}
+        loading={toggling}
       />
     </div>
   );
