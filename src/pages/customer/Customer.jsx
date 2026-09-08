@@ -14,9 +14,21 @@ import Pagination from "@/components/common/Pagination/Pagination";
 import StatusDialog from "@/components/common/StatusDialog/StatusDialog";
 import CustomerDialog from "@/components/customer/CustomerDialog";
 
-const Customer = () => {
-  const [search, setSearch] = useState("");
+import { ROLES } from "@/constants/roles";
+import useAuth from "@/hooks/useAuth";
 
+const Customer = () => {
+  const { user } = useAuth();
+
+  const isAdmin =
+    user?.role === ROLES.ADMIN;
+
+  const canManageCustomers =
+    user?.role === ROLES.ADMIN ||
+    user?.role === ROLES.STORE_ADMIN ||
+    user?.role === ROLES.STORE_MANAGER;
+
+  const [search, setSearch] = useState("");
   const [customers, setCustomers] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -192,7 +204,11 @@ const Customer = () => {
         </div>
       ),
     },
-    {
+  ];
+
+  // Only management roles get action buttons
+  if (canManageCustomers) {
+    columns.push({
       header: "Actions",
       accessor: "actions",
       className: "text-right",
@@ -225,16 +241,24 @@ const Customer = () => {
           </Button>
         </div>
       ),
-    },
-  ];
+    });
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Customers"
         description="Manage your customers."
-        buttonLabel="Add Customer"
-        onButtonClick={handleCreateCustomer}
+        buttonLabel={
+          canManageCustomers
+            ? "Add Customer"
+            : undefined
+        }
+        onButtonClick={
+          canManageCustomers
+            ? handleCreateCustomer
+            : undefined
+        }
       />
 
       <SearchBar
@@ -257,7 +281,9 @@ const Customer = () => {
           emptyDescription={
             search
               ? "Try a different search term."
-              : "Create your first customer."
+              : canManageCustomers
+                ? "Create your first customer."
+                : "No customers are available."
           }
         />
       )}
@@ -271,56 +297,60 @@ const Customer = () => {
         />
       )}
 
-      <CustomerDialog
-        open={openCustomerDialog}
-        onOpenChange={(open) => {
-          setOpenCustomerDialog(open);
+      {canManageCustomers && (
+        <>
+          <CustomerDialog
+            open={openCustomerDialog}
+            onOpenChange={(open) => {
+              setOpenCustomerDialog(open);
 
-          if (!open) {
-            setEditingCustomer(null);
-          }
-        }}
-        title={
-          editingCustomer
-            ? "Edit Customer"
-            : "Add Customer"
-        }
-        loading={saving}
-        initialData={editingCustomer}
-        onSubmit={handleSaveCustomer}
-      />
-
-      <StatusDialog
-        open={openStatusDialog}
-        onOpenChange={(open) => {
-          if (!toggling) {
-            setOpenStatusDialog(open);
-
-            if (!open) {
-              setSelectedCustomer(null);
+              if (!open) {
+                setEditingCustomer(null);
+              }
+            }}
+            title={
+              editingCustomer
+                ? "Edit Customer"
+                : "Add Customer"
             }
-          }
-        }}
-        action={
-          selectedCustomer?.status === "ACTIVE"
-            ? "deactivate"
-            : "activate"
-        }
-        title={
-          selectedCustomer?.status === "ACTIVE"
-            ? "Deactivate Customer"
-            : "Activate Customer"
-        }
-        description={
-          selectedCustomer
-            ? selectedCustomer.status === "ACTIVE"
-              ? `Are you sure you want to deactivate "${selectedCustomer.fullName}"?`
-              : `Are you sure you want to activate "${selectedCustomer.fullName}"?`
-            : ""
-        }
-        onConfirm={handleToggleStatus}
-        loading={toggling}
-      />
+            loading={saving}
+            initialData={editingCustomer}
+            onSubmit={handleSaveCustomer}
+          />
+
+          <StatusDialog
+            open={openStatusDialog}
+            onOpenChange={(open) => {
+              if (!toggling) {
+                setOpenStatusDialog(open);
+
+                if (!open) {
+                  setSelectedCustomer(null);
+                }
+              }
+            }}
+            action={
+              selectedCustomer?.status === "ACTIVE"
+                ? "deactivate"
+                : "activate"
+            }
+            title={
+              selectedCustomer?.status === "ACTIVE"
+                ? "Deactivate Customer"
+                : "Activate Customer"
+            }
+            description={
+              selectedCustomer
+                ? selectedCustomer.status === "ACTIVE"
+                  ? `Are you sure you want to deactivate "${selectedCustomer.fullName}"?`
+                  : `Are you sure you want to activate "${selectedCustomer.fullName}"?`
+                : ""
+            }
+            onConfirm={handleToggleStatus}
+            loading={toggling}
+          />
+        </>
+      )}
     </div>
   );
 };

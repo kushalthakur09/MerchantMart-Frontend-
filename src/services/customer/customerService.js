@@ -28,16 +28,38 @@ const update = async (id, customer) => {
 };
 
 const deactivate = async (id) => {
-  const response = await api.put(
-    `/api/customer/${id}/deactivate`
-  );
+  const response = await api.put(`/api/customer/${id}/deactivate`);
   return response.data;
 };
 
 const activate = async (id) => {
-  const response = await api.put(
-    `/api/customer/${id}/activate`
-  );
+  const response = await api.put(`/api/customer/${id}/activate`);
+  return response.data;
+};
+
+// =========================================================
+// POS CUSTOMER OPERATIONS
+// =========================================================
+
+const searchForOrder = async (keyword) => {
+  const response = await api.get("/api/customer/order/search", {
+    params: { keyword },
+  });
+  return response.data;
+};
+
+const getForOrder = async (id) => {
+  const response = await api.get(`/api/customer/order/${id}`);
+  return response.data;
+};
+
+const createForOrder = async (customer) => {
+  const response = await api.post("/api/customer/order", customer);
+  return response.data;
+};
+
+const activateForOrder = async (id) => {
+  const response = await api.put(`/api/customer/order/${id}/activate`);
   return response.data;
 };
 
@@ -49,6 +71,10 @@ const customerService = {
   update,
   deactivate,
   activate,
+  searchForOrder,
+  getForOrder,
+  createForOrder,
+  activateForOrder,
 };
 
 export default customerService;

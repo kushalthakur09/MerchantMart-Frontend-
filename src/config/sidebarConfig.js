@@ -110,7 +110,12 @@ export const sidebarConfig = [
     label: "Customers",
     icon: Users,
     to: ROUTES.CUSTOMERS,
-    roles: Object.values(ROLES),
+    roles: [
+      ROLES.ADMIN,
+      ROLES.STORE_ADMIN,
+      ROLES.STORE_MANAGER,
+      ROLES.BRANCH_MANAGER,
+    ],
   },
   {
     label: "Shift Reports",

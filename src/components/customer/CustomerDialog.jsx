@@ -11,6 +11,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
+const emptyForm = {
+  fullName: "",
+  email: "",
+  phoneNo: "",
+};
+
 const CustomerDialog = ({
   open,
   onOpenChange,
@@ -19,11 +25,7 @@ const CustomerDialog = ({
   initialData = null,
   onSubmit,
 }) => {
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    phoneNo: "",
-  });
+  const [formData, setFormData] = useState(emptyForm);
 
   useEffect(() => {
     if (initialData) {
@@ -33,11 +35,7 @@ const CustomerDialog = ({
         phoneNo: initialData.phoneNo || "",
       });
     } else {
-      setFormData({
-        fullName: "",
-        email: "",
-        phoneNo: "",
-      });
+      setFormData(emptyForm);
     }
   }, [initialData, open]);
 
@@ -48,10 +46,20 @@ const CustomerDialog = ({
     }));
   };
 
+  const handlePhoneChange = (value) => {
+    const digitsOnly = value.replace(/\D/g, "").slice(0, 10);
+
+    handleChange("phoneNo", digitsOnly);
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    onSubmit(formData);
+    onSubmit({
+      fullName: formData.fullName.trim(),
+      email: formData.email.trim(),
+      phoneNo: formData.phoneNo.trim(),
+    });
   };
 
   return (
@@ -60,6 +68,7 @@ const CustomerDialog = ({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
+
             <DialogDescription>
               {initialData
                 ? "Update customer details."
@@ -95,15 +104,14 @@ const CustomerDialog = ({
 
               <Input
                 id="phoneNo"
+                type="tel"
                 value={formData.phoneNo}
                 onChange={(event) =>
-                  handleChange(
-                    "phoneNo",
-                    event.target.value
-                  )
+                  handlePhoneChange(event.target.value)
                 }
                 placeholder="Enter 10-digit phone number"
                 maxLength={10}
+                inputMode="numeric"
                 disabled={loading}
               />
             </div>
