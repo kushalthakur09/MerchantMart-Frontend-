@@ -89,10 +89,10 @@ export const sidebarConfig = [
     icon: ShoppingCart,
     to: ROUTES.ORDERS,
     roles: [
+      ROLES.ADMIN,
       ROLES.STORE_ADMIN,
       ROLES.STORE_MANAGER,
       ROLES.BRANCH_MANAGER,
-      ROLES.BRANCH_CASHIER,
     ],
   },
   {
@@ -128,5 +128,11 @@ export const sidebarConfig = [
       ROLES.BRANCH_MANAGER,
       ROLES.BRANCH_CASHIER,
     ],
+  },
+  {
+    label: "POS",
+    icon: ShoppingCart,
+    to: ROUTES.POS,
+    roles: [ROLES.BRANCH_CASHIER],
   },
 ];

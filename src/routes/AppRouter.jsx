@@ -26,6 +26,7 @@ import Employees from "@/pages/employee/Employees";
 import Profile from "@/pages/profile/Profile";
 import Customer from "@/pages/customer/Customer";
 import POS from "@/pages/orders/POS";
+import OrderHistory from "@/pages/orders/OrderHistory";
 
 import { ROLES } from "@/constants/roles";
 import { ROUTES } from "@/config/routes";
@@ -142,15 +143,29 @@ export default function AppRouter() {
               <Route path={ROUTES.EMPLOYEES} element={<Employees />} />
             </Route>
 
-            {/* Orders */}
+            {/* Order History - Management */}
             <Route
               element={
                 <RoleProtectedRoute
-                  allowedRoles={[ROLES.BRANCH_CASHIER, ROLES.BRANCH_MANAGER]}
+                  allowedRoles={[
+                    ROLES.ADMIN,
+                    ROLES.STORE_ADMIN,
+                    ROLES.STORE_MANAGER,
+                    ROLES.BRANCH_MANAGER,
+                  ]}
                 />
               }
             >
-              <Route path={ROUTES.ORDERS} element={<POS />} />
+              <Route path={ROUTES.ORDERS} element={<OrderHistory />} />
+            </Route>
+
+            {/* POS - Branch Cashier only */}
+            <Route
+              element={
+                <RoleProtectedRoute allowedRoles={[ROLES.BRANCH_CASHIER]} />
+              }
+            >
+              <Route path={ROUTES.POS} element={<POS />} />
             </Route>
           </Route>
         </Route>

@@ -31,4 +31,6 @@ export const ROUTES = {
   ANALYTICS: "/analytics",
 
   SETTINGS: "/settings",
+
+  POS: "/pos",
 };
