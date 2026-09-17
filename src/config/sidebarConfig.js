@@ -100,6 +100,7 @@ export const sidebarConfig = [
     icon: RotateCcw,
     to: ROUTES.REFUNDS,
     roles: [
+      ROLES.ADMIN,
       ROLES.STORE_ADMIN,
       ROLES.STORE_MANAGER,
       ROLES.BRANCH_MANAGER,

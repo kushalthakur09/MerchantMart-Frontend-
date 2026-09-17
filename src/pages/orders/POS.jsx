@@ -7,6 +7,8 @@ import customerService from "@/services/customer/customerService";
 import orderService from "@/services/order/orderService";
 import inventoryService from "@/services/inventory/inventoryService";
 
+import RefundDialog from "@/components/refunds/RefundDialog";
+
 const POS = () => {
   const { user } = useAuth();
 
@@ -33,6 +35,11 @@ const POS = () => {
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
 
+  const [orders, setOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   // =========================
   // Load Products
   // =========================
@@ -345,10 +352,64 @@ const POS = () => {
       toast.success("Order placed successfully.");
 
       clearCart();
+      await refreshOrders();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to place order.");
     } finally {
       setPlacingOrder(false);
+    }
+  };
+
+  // =========================
+  // Cashier Orders
+  // =========================
+
+  useEffect(() => {
+    const loadOrders = async () => {
+      if (!user?.id) return;
+
+      try {
+        setLoadingOrders(true);
+
+        const data = await orderService.getByCashier(user.id);
+
+        setOrders(
+          data
+            .filter((order) => order.status === "COMPLETED")
+            .slice(0, 10),
+        );
+      } catch (error) {
+        toast.error(
+          error.response?.data?.message || "Failed to load orders.",
+        );
+      } finally {
+        setLoadingOrders(false);
+      }
+    };
+
+    loadOrders();
+  }, [user?.id]);
+
+  const openRefundDialog = (order) => {
+    setSelectedOrder(order);
+    setRefundOpen(true);
+  };
+
+  const refreshOrders = async () => {
+    if (!user?.id) return;
+
+    try {
+      const data = await orderService.getByCashier(user.id);
+
+      setOrders(
+        data
+          .filter((order) => order.status === "COMPLETED")
+          .slice(0, 10),
+      );
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to refresh orders.",
+      );
     }
   };
 
@@ -675,6 +736,70 @@ const POS = () => {
           </button>
         </div>
       </div>
+
+      {/* =========================
+    MY RECENT ORDERS
+========================= */}
+
+      <div className="mt-6 rounded-lg border bg-card p-4">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">My Recent Orders</h2>
+            <p className="text-sm text-muted-foreground">
+              View your completed orders and request refunds.
+            </p>
+          </div>
+        </div>
+
+        {loadingOrders ? (
+          <p className="text-muted-foreground">Loading orders...</p>
+        ) : orders.length === 0 ? (
+          <p className="text-muted-foreground">No completed orders found.</p>
+        ) : (
+          <div className="space-y-3">
+            {orders.map((order) => (
+              <div
+                key={order.id}
+                className="flex flex-col gap-3 rounded-md border p-4 md:flex-row md:items-center md:justify-between"
+              >
+                <div>
+                  <div className="font-semibold">Order #{order.id}</div>
+
+                  <div className="text-sm text-muted-foreground">
+                    {order.paymentType} • ₹
+                    {Number(order.totalAmount || 0).toFixed(2)}
+                  </div>
+
+                  <div className="text-xs text-muted-foreground">
+                    {order.items?.length || 0} item(s)
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => openRefundDialog(order)}
+                  className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
+                >
+                  Request Refund
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <RefundDialog
+        open={refundOpen}
+        onOpenChange={(open) => {
+          setRefundOpen(open);
+
+          if (!open) {
+            setSelectedOrder(null);
+          }
+        }}
+        order={selectedOrder}
+        onSuccess={refreshOrders}
+      />
     </div>
   );
 };

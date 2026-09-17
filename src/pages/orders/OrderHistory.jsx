@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye } from "lucide-react";
 import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
+import { Eye, RotateCcw } from "lucide-react";
 
 import useAuth from "@/hooks/useAuth";
 import orderService from "@/services/order/orderService";
+
+import RefundDialog from "@/components/refunds/RefundDialog";
 
 import LoadingSpinner from "@/components/common/LoadingSpinner/LoadingSpinner";
 import PageHeader from "@/components/common/PageHeader/PageHeader";
@@ -22,6 +23,10 @@ const OrderHistory = () => {
   const [search, setSearch] = useState("");
 
   const [loading, setLoading] = useState(true);
+
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [orderLoading, setOrderLoading] = useState(false);
 
   const loadOrders = async () => {
     try {
@@ -95,6 +100,39 @@ const OrderHistory = () => {
     });
   }, [orders, search]);
 
+  const handleViewOrder = async (orderId) => {
+    try {
+      setOrderLoading(true);
+
+      const order = await orderService.getById(orderId);
+
+      setSelectedOrder(order);
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to load order details.",
+      );
+    } finally {
+      setOrderLoading(false);
+    }
+  };
+
+  const handleRefund = async (orderId) => {
+    try {
+      setOrderLoading(true);
+
+      const order = await orderService.getById(orderId);
+
+      setSelectedOrder(order);
+      setRefundOpen(true);
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to load order details.",
+      );
+    } finally {
+      setOrderLoading(false);
+    }
+  };
+
   const columns = [
     {
       header: "Order ID",
@@ -137,17 +175,29 @@ const OrderHistory = () => {
       accessor: "actions",
       className: "text-right",
       cell: (row) => (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
           <Button
             variant="outline"
             size="icon"
             title="View Order"
-            onClick={() =>
-              toast.info(`Order #${row.id} details will be available here.`)
-            }
+            onClick={() => handleViewOrder(row.id)}
+            disabled={orderLoading}
           >
             <Eye size={16} />
           </Button>
+
+          {user?.role === ROLES.BRANCH_CASHIER &&
+            row.status === "COMPLETED" && (
+              <Button
+                variant="outline"
+                size="icon"
+                title="Refund Order"
+                onClick={() => handleRefund(row.id)}
+                disabled={orderLoading}
+              >
+                <RotateCcw size={16} />
+              </Button>
+            )}
         </div>
       ),
     },
@@ -182,6 +232,14 @@ const OrderHistory = () => {
           totalPages={1}
           onPrevious={() => {}}
           onNext={() => {}}
+        />
+      )}
+      {selectedOrder && (
+        <RefundDialog
+          open={refundOpen}
+          onOpenChange={setRefundOpen}
+          order={selectedOrder}
+          onSuccess={loadOrders}
         />
       )}
     </div>

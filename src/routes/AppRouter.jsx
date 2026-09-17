@@ -27,6 +27,7 @@ import Profile from "@/pages/profile/Profile";
 import Customer from "@/pages/customer/Customer";
 import POS from "@/pages/orders/POS";
 import OrderHistory from "@/pages/orders/OrderHistory";
+import Refunds from "@/pages/refunds/Refunds";
 
 import { ROLES } from "@/constants/roles";
 import { ROUTES } from "@/config/routes";
@@ -166,6 +167,23 @@ export default function AppRouter() {
               }
             >
               <Route path={ROUTES.POS} element={<POS />} />
+            </Route>
+
+            {/* Refunds */}
+            <Route
+              element={
+                <RoleProtectedRoute
+                  allowedRoles={[
+                    ROLES.ADMIN,
+                    ROLES.STORE_ADMIN,
+                    ROLES.STORE_MANAGER,
+                    ROLES.BRANCH_MANAGER,
+                    ROLES.BRANCH_CASHIER,
+                  ]}
+                />
+              }
+            >
+              <Route path={ROUTES.REFUNDS} element={<Refunds />} />
             </Route>
           </Route>
         </Route>
