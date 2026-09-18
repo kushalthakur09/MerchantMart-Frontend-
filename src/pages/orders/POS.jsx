@@ -9,6 +9,7 @@ import inventoryService from "@/services/inventory/inventoryService";
 import refundService from "@/services/refunds/refundService";
 
 import RefundDialog from "@/components/refunds/RefundDialog";
+import OrderReceiptDialog from "@/components/orders/OrderReceiptDialog";
 
 const POS = () => {
   const { user } = useAuth();
@@ -45,6 +46,9 @@ const POS = () => {
 
   const [myRefunds, setMyRefunds] = useState([]);
 
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [selectedReceiptOrder, setSelectedReceiptOrder] = useState(null);
+
   // =========================
   // Load Products
   // =========================
@@ -62,16 +66,13 @@ const POS = () => {
         ]);
 
         setProducts(
-          productsData.filter(
-            (product) => product.status === "ACTIVE"
-          )
+          productsData.filter((product) => product.status === "ACTIVE"),
         );
 
         setInventory(inventoryData);
       } catch (error) {
         toast.error(
-          error.response?.data?.message ||
-            "Failed to load products."
+          error.response?.data?.message || "Failed to load products.",
         );
       } finally {
         setLoadingProducts(false);
@@ -93,11 +94,7 @@ const POS = () => {
         try {
           const data = await productService.getByStore(user.storeId);
 
-          setProducts(
-            data.filter(
-              (product) => product.status === "ACTIVE"
-            )
-          );
+          setProducts(data.filter((product) => product.status === "ACTIVE"));
         } catch {
           toast.error("Failed to load products.");
         }
@@ -108,21 +105,11 @@ const POS = () => {
       try {
         setLoadingProducts(true);
 
-        const data = await productService.search(
-          user.storeId,
-          productSearch
-        );
+        const data = await productService.search(user.storeId, productSearch);
 
-        setProducts(
-          data.filter(
-            (product) => product.status === "ACTIVE"
-          )
-        );
+        setProducts(data.filter((product) => product.status === "ACTIVE"));
       } catch (error) {
-        toast.error(
-          error.response?.data?.message ||
-            "Product search failed."
-        );
+        toast.error(error.response?.data?.message || "Product search failed.");
       } finally {
         setLoadingProducts(false);
       }
@@ -138,9 +125,7 @@ const POS = () => {
   // =========================
 
   const getInventoryQuantity = (productId) => {
-    const item = inventory.find(
-      (entry) => entry.productId === productId
-    );
+    const item = inventory.find((entry) => entry.productId === productId);
 
     return item?.quantity ?? 0;
   };
@@ -159,16 +144,14 @@ const POS = () => {
 
     setCart((currentCart) => {
       const existing = currentCart.find(
-        (item) => item.productId === product.id
+        (item) => item.productId === product.id,
       );
 
       if (existing) {
         const newQuantity = existing.quantity + 1;
 
         if (newQuantity > availableQuantity) {
-          toast.error(
-            `Only ${availableQuantity} available in stock.`
-          );
+          toast.error(`Only ${availableQuantity} available in stock.`);
 
           return currentCart;
         }
@@ -176,7 +159,7 @@ const POS = () => {
         return currentCart.map((item) =>
           item.productId === product.id
             ? { ...item, quantity: newQuantity }
-            : item
+            : item,
         );
       }
 
@@ -201,26 +184,20 @@ const POS = () => {
     }
 
     if (quantity > availableQuantity) {
-      toast.error(
-        `Only ${availableQuantity} available in stock.`
-      );
+      toast.error(`Only ${availableQuantity} available in stock.`);
       return;
     }
 
     setCart((currentCart) =>
       currentCart.map((item) =>
-        item.productId === productId
-          ? { ...item, quantity }
-          : item
-      )
+        item.productId === productId ? { ...item, quantity } : item,
+      ),
     );
   };
 
   const removeFromCart = (productId) => {
     setCart((currentCart) =>
-      currentCart.filter(
-        (item) => item.productId !== productId
-      )
+      currentCart.filter((item) => item.productId !== productId),
     );
   };
 
@@ -235,11 +212,10 @@ const POS = () => {
   const totalAmount = useMemo(
     () =>
       cart.reduce(
-        (total, item) =>
-          total + Number(item.price) * item.quantity,
-        0
+        (total, item) => total + Number(item.price) * item.quantity,
+        0,
       ),
-    [cart]
+    [cart],
   );
 
   // =========================
@@ -256,17 +232,11 @@ const POS = () => {
       try {
         setLoadingCustomers(true);
 
-        const data =
-          await customerService.searchForOrder(
-            customerSearch
-          );
+        const data = await customerService.searchForOrder(customerSearch);
 
         setCustomers(data);
       } catch (error) {
-        toast.error(
-          error.response?.data?.message ||
-            "Customer search failed."
-        );
+        toast.error(error.response?.data?.message || "Customer search failed.");
       } finally {
         setLoadingCustomers(false);
       }
@@ -305,17 +275,12 @@ const POS = () => {
     }
 
     if (!/^[0-9]{10}$/.test(newCustomer.phoneNo)) {
-      toast.error(
-        "Phone number must contain exactly 10 digits."
-      );
+      toast.error("Phone number must contain exactly 10 digits.");
       return;
     }
 
     try {
-      const customer =
-        await customerService.createForOrder(
-          newCustomer
-        );
+      const customer = await customerService.createForOrder(newCustomer);
 
       setSelectedCustomer(customer);
       setShowCustomerForm(false);
@@ -329,8 +294,7 @@ const POS = () => {
       toast.success("Customer registered successfully.");
     } catch (error) {
       toast.error(
-        error.response?.data?.message ||
-          "Failed to register customer."
+        error.response?.data?.message || "Failed to register customer.",
       );
     }
   };
@@ -341,9 +305,7 @@ const POS = () => {
 
   const activateCustomer = async (customer) => {
     try {
-      await customerService.activateForOrder(
-        customer.id
-      );
+      await customerService.activateForOrder(customer.id);
 
       const updatedCustomer = {
         ...customer,
@@ -355,8 +317,7 @@ const POS = () => {
       toast.success("Customer activated successfully.");
     } catch (error) {
       toast.error(
-        error.response?.data?.message ||
-          "Failed to activate customer."
+        error.response?.data?.message || "Failed to activate customer.",
       );
     }
   };
@@ -367,9 +328,7 @@ const POS = () => {
 
   const placeOrder = async () => {
     if (!user?.branchId) {
-      toast.error(
-        "No branch is assigned to the current user."
-      );
+      toast.error("No branch is assigned to the current user.");
       return;
     }
 
@@ -379,16 +338,12 @@ const POS = () => {
     }
 
     if (!selectedCustomer) {
-      toast.error(
-        "Please select or register a customer."
-      );
+      toast.error("Please select or register a customer.");
       return;
     }
 
     if (selectedCustomer.status !== "ACTIVE") {
-      toast.error(
-        "Please activate the customer before placing the order."
-      );
+      toast.error("Please activate the customer before placing the order.");
       return;
     }
 
@@ -413,10 +368,7 @@ const POS = () => {
 
       await refreshOrders();
     } catch (error) {
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to place order."
-      );
+      toast.error(error.response?.data?.message || "Failed to place order.");
     } finally {
       setPlacingOrder(false);
     }
@@ -433,26 +385,20 @@ const POS = () => {
       try {
         setLoadingOrders(true);
 
-        const [orderData, refundData] =
-          await Promise.all([
-            orderService.getByCashier(user.id),
-            refundService.getByCashier(user.id),
-          ]);
+        const [orderData, refundData] = await Promise.all([
+          orderService.getByCashier(user.id),
+          refundService.getByCashier(user.id),
+        ]);
 
         setOrders(
           orderData
-            .filter(
-              (order) => order.status === "COMPLETED"
-            )
-            .slice(0, 10)
+            .filter((order) => order.status === "COMPLETED")
+            .slice(0, 10),
         );
 
         setMyRefunds(refundData || []);
       } catch (error) {
-        toast.error(
-          error.response?.data?.message ||
-            "Failed to load orders."
-        );
+        toast.error(error.response?.data?.message || "Failed to load orders.");
       } finally {
         setLoadingOrders(false);
       }
@@ -462,9 +408,7 @@ const POS = () => {
   }, [user?.id]);
 
   const getOrderRefund = (orderId) => {
-    return myRefunds.find(
-      (refund) => refund.orderId === orderId
-    );
+    return myRefunds.find((refund) => refund.orderId === orderId);
   };
 
   const openRefundDialog = (order, refund = null) => {
@@ -477,29 +421,25 @@ const POS = () => {
     if (!user?.id) return;
 
     try {
-      const [orderData, refundData] =
-        await Promise.all([
-          orderService.getByCashier(user.id),
-          refundService.getByCashier(user.id),
-        ]);
+      const [orderData, refundData] = await Promise.all([
+        orderService.getByCashier(user.id),
+        refundService.getByCashier(user.id),
+      ]);
 
       setOrders(
-        orderData
-          .filter(
-            (order) => order.status === "COMPLETED"
-          )
-          .slice(0, 10)
+        orderData.filter((order) => order.status === "COMPLETED").slice(0, 10),
       );
 
       setMyRefunds(refundData || []);
     } catch (error) {
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to refresh orders."
-      );
+      toast.error(error.response?.data?.message || "Failed to refresh orders.");
     }
   };
 
+  const openReceipt = (order) => {
+    setSelectedReceiptOrder(order);
+    setReceiptOpen(true);
+  };
   // =========================
   // UI
   // =========================
@@ -507,13 +447,9 @@ const POS = () => {
   return (
     <div className="p-4 md:p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">
-          Point of Sale
-        </h1>
+        <h1 className="text-2xl font-bold">Point of Sale</h1>
 
-        <p className="text-muted-foreground">
-          Create a new customer order
-        </p>
+        <p className="text-muted-foreground">Create a new customer order</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -522,28 +458,20 @@ const POS = () => {
         ========================= */}
 
         <div className="rounded-lg border bg-card p-4 lg:col-span-2">
-          <h2 className="mb-4 text-lg font-semibold">
-            Products
-          </h2>
+          <h2 className="mb-4 text-lg font-semibold">Products</h2>
 
           <input
             type="text"
             placeholder="Search products..."
             value={productSearch}
-            onChange={(event) =>
-              setProductSearch(event.target.value)
-            }
+            onChange={(event) => setProductSearch(event.target.value)}
             className="mb-4 w-full rounded-md border bg-background px-3 py-2 outline-none"
           />
 
           {loadingProducts ? (
-            <p className="text-muted-foreground">
-              Loading products...
-            </p>
+            <p className="text-muted-foreground">Loading products...</p>
           ) : products.length === 0 ? (
-            <p className="text-muted-foreground">
-              No products found.
-            </p>
+            <p className="text-muted-foreground">No products found.</p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {products.map((product) => (
@@ -551,32 +479,23 @@ const POS = () => {
                   key={product.id}
                   type="button"
                   onClick={() => addToCart(product)}
-                  disabled={
-                    getInventoryQuantity(product.id) <= 0
-                  }
+                  disabled={getInventoryQuantity(product.id) <= 0}
                   className="rounded-lg border p-4 text-left transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <div className="font-medium">
-                    {product.name}
-                  </div>
+                  <div className="font-medium">{product.name}</div>
 
                   <div className="mt-2 text-sm text-muted-foreground">
-                    ₹
-                    {Number(
-                      product.sellingPrice
-                    ).toFixed(2)}
+                    ₹{Number(product.sellingPrice).toFixed(2)}
                   </div>
 
                   <div className="mt-2 text-xs">
-                    {getInventoryQuantity(product.id) <=
-                    0 ? (
+                    {getInventoryQuantity(product.id) <= 0 ? (
                       <span className="font-medium text-destructive">
                         Out of Stock
                       </span>
                     ) : (
                       <span className="text-muted-foreground">
-                        Stock:{" "}
-                        {getInventoryQuantity(product.id)}
+                        Stock: {getInventoryQuantity(product.id)}
                       </span>
                     )}
                   </div>
@@ -592,9 +511,7 @@ const POS = () => {
 
         <div className="rounded-lg border bg-card p-4">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">
-              Cart
-            </h2>
+            <h2 className="text-lg font-semibold">Cart</h2>
 
             {cart.length > 0 && (
               <button
@@ -608,26 +525,17 @@ const POS = () => {
           </div>
 
           {cart.length === 0 ? (
-            <p className="text-muted-foreground">
-              Cart is empty.
-            </p>
+            <p className="text-muted-foreground">Cart is empty.</p>
           ) : (
             <div className="space-y-4">
               {cart.map((item) => (
-                <div
-                  key={item.productId}
-                  className="border-b pb-3"
-                >
+                <div key={item.productId} className="border-b pb-3">
                   <div className="flex justify-between gap-2">
-                    <span className="font-medium">
-                      {item.name}
-                    </span>
+                    <span className="font-medium">{item.name}</span>
 
                     <button
                       type="button"
-                      onClick={() =>
-                        removeFromCart(item.productId)
-                      }
+                      onClick={() => removeFromCart(item.productId)}
                       className="text-sm text-destructive"
                     >
                       Remove
@@ -639,10 +547,7 @@ const POS = () => {
                       <button
                         type="button"
                         onClick={() =>
-                          updateQuantity(
-                            item.productId,
-                            item.quantity - 1
-                          )
+                          updateQuantity(item.productId, item.quantity - 1)
                         }
                         className="h-7 w-7 rounded border"
                       >
@@ -654,16 +559,10 @@ const POS = () => {
                       <button
                         type="button"
                         onClick={() =>
-                          updateQuantity(
-                            item.productId,
-                            item.quantity + 1
-                          )
+                          updateQuantity(item.productId, item.quantity + 1)
                         }
                         disabled={
-                          item.quantity >=
-                          getInventoryQuantity(
-                            item.productId
-                          )
+                          item.quantity >= getInventoryQuantity(item.productId)
                         }
                         className="h-7 w-7 rounded border disabled:cursor-not-allowed disabled:opacity-50"
                       >
@@ -672,11 +571,7 @@ const POS = () => {
                     </div>
 
                     <span>
-                      ₹
-                      {(
-                        Number(item.price) *
-                        item.quantity
-                      ).toFixed(2)}
+                      ₹{(Number(item.price) * item.quantity).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -684,9 +579,7 @@ const POS = () => {
 
               <div className="flex justify-between border-t pt-4 text-lg font-bold">
                 <span>Total</span>
-                <span>
-                  ₹{totalAmount.toFixed(2)}
-                </span>
+                <span>₹{totalAmount.toFixed(2)}</span>
               </div>
             </div>
           )}
@@ -697,9 +590,7 @@ const POS = () => {
         ========================= */}
 
         <div className="rounded-lg border bg-card p-4 lg:col-span-2">
-          <h2 className="mb-4 text-lg font-semibold">
-            Customer
-          </h2>
+          <h2 className="mb-4 text-lg font-semibold">Customer</h2>
 
           {selectedCustomer ? (
             <div className="rounded-md border p-4">
@@ -720,9 +611,7 @@ const POS = () => {
                   )}
                 </div>
 
-                <span className="text-sm">
-                  {selectedCustomer.status}
-                </span>
+                <span className="text-sm">{selectedCustomer.status}</span>
               </div>
 
               <button
@@ -742,9 +631,7 @@ const POS = () => {
                 type="text"
                 placeholder="Search by name, phone or email..."
                 value={customerSearch}
-                onChange={(event) =>
-                  setCustomerSearch(event.target.value)
-                }
+                onChange={(event) => setCustomerSearch(event.target.value)}
                 className="w-full rounded-md border bg-background px-3 py-2 outline-none"
               />
 
@@ -763,14 +650,10 @@ const POS = () => {
                     >
                       <button
                         type="button"
-                        onClick={() =>
-                          selectCustomer(customer)
-                        }
+                        onClick={() => selectCustomer(customer)}
                         className="text-left"
                       >
-                        <div className="font-medium">
-                          {customer.fullName}
-                        </div>
+                        <div className="font-medium">{customer.fullName}</div>
 
                         <div className="text-sm text-muted-foreground">
                           {customer.phoneNo}
@@ -780,9 +663,7 @@ const POS = () => {
                       {customer.status === "INACTIVE" && (
                         <button
                           type="button"
-                          onClick={() =>
-                            activateCustomer(customer)
-                          }
+                          onClick={() => activateCustomer(customer)}
                           className="text-sm font-medium"
                         >
                           Activate
@@ -795,9 +676,7 @@ const POS = () => {
 
               <button
                 type="button"
-                onClick={() =>
-                  setShowCustomerForm(true)
-                }
+                onClick={() => setShowCustomerForm(true)}
                 className="mt-4 rounded-md border px-4 py-2"
               >
                 + Register New Customer
@@ -812,9 +691,7 @@ const POS = () => {
               onSubmit={createCustomer}
               className="mt-4 space-y-3 rounded-md border p-4"
             >
-              <h3 className="font-semibold">
-                Register Customer
-              </h3>
+              <h3 className="font-semibold">Register Customer</h3>
 
               <input
                 name="fullName"
@@ -852,9 +729,7 @@ const POS = () => {
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setShowCustomerForm(false)
-                  }
+                  onClick={() => setShowCustomerForm(false)}
                   className="rounded-md border px-4 py-2"
                 >
                   Cancel
@@ -869,15 +744,11 @@ const POS = () => {
         ========================= */}
 
         <div className="rounded-lg border bg-card p-4">
-          <h2 className="mb-4 text-lg font-semibold">
-            Payment
-          </h2>
+          <h2 className="mb-4 text-lg font-semibold">Payment</h2>
 
           <select
             value={paymentType}
-            onChange={(event) =>
-              setPaymentType(event.target.value)
-            }
+            onChange={(event) => setPaymentType(event.target.value)}
             className="w-full rounded-md border bg-background px-3 py-2"
           >
             <option value="CASH">Cash</option>
@@ -893,9 +764,7 @@ const POS = () => {
           >
             {placingOrder
               ? "Placing Order..."
-              : `Place Order • ₹${totalAmount.toFixed(
-                  2
-                )}`}
+              : `Place Order • ₹${totalAmount.toFixed(2)}`}
           </button>
         </div>
       </div>
@@ -907,9 +776,7 @@ const POS = () => {
       <div className="mt-6 rounded-lg border bg-card p-4">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold">
-              My Recent Orders
-            </h2>
+            <h2 className="text-lg font-semibold">My Recent Orders</h2>
 
             <p className="text-sm text-muted-foreground">
               View your completed orders and manage refunds.
@@ -918,13 +785,9 @@ const POS = () => {
         </div>
 
         {loadingOrders ? (
-          <p className="text-muted-foreground">
-            Loading orders...
-          </p>
+          <p className="text-muted-foreground">Loading orders...</p>
         ) : orders.length === 0 ? (
-          <p className="text-muted-foreground">
-            No completed orders found.
-          </p>
+          <p className="text-muted-foreground">No completed orders found.</p>
         ) : (
           <div className="space-y-3">
             {orders.map((order) => {
@@ -936,15 +799,11 @@ const POS = () => {
                   className="flex flex-col gap-3 rounded-md border p-4 md:flex-row md:items-center md:justify-between"
                 >
                   <div>
-                    <div className="font-semibold">
-                      Order #{order.id}
-                    </div>
+                    <div className="font-semibold">Order #{order.id}</div>
 
                     <div className="text-sm text-muted-foreground">
                       {order.paymentType} • ₹
-                      {Number(
-                        order.totalAmount || 0
-                      ).toFixed(2)}
+                      {Number(order.totalAmount || 0).toFixed(2)}
                     </div>
 
                     <div className="text-xs text-muted-foreground">
@@ -952,48 +811,51 @@ const POS = () => {
                     </div>
                   </div>
 
-                  {/* No Refund */}
-                  {!refund && (
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={() =>
-                        openRefundDialog(order)
-                      }
+                      onClick={() => openReceipt(order)}
                       className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
                     >
-                      Request Refund
+                      View Receipt
                     </button>
-                  )}
 
-                  {/* Pending */}
-                  {refund?.status === "PENDING" && (
-                    <span className="rounded-md border px-4 py-2 text-sm text-muted-foreground">
-                      Refund Pending
-                    </span>
-                  )}
+                    {/* No Refund */}
+                    {!refund && (
+                      <button
+                        type="button"
+                        onClick={() => openRefundDialog(order)}
+                        className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
+                      >
+                        Request Refund
+                      </button>
+                    )}
 
-                  {/* Approved */}
-                  {refund?.status === "APPROVED" && (
-                    <span className="rounded-md border px-4 py-2 text-sm text-muted-foreground">
-                      Refunded
-                    </span>
-                  )}
+                    {/* Pending */}
+                    {refund?.status === "PENDING" && (
+                      <span className="rounded-md border px-4 py-2 text-sm text-muted-foreground">
+                        Refund Pending
+                      </span>
+                    )}
 
-                  {/* Rejected */}
-                  {refund?.status === "REJECTED" && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        openRefundDialog(
-                          order,
-                          refund
-                        )
-                      }
-                      className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
-                    >
-                      Edit & Resubmit
-                    </button>
-                  )}
+                    {/* Approved */}
+                    {refund?.status === "APPROVED" && (
+                      <span className="rounded-md border px-4 py-2 text-sm text-muted-foreground">
+                        Refunded
+                      </span>
+                    )}
+
+                    {/* Rejected */}
+                    {refund?.status === "REJECTED" && (
+                      <button
+                        type="button"
+                        onClick={() => openRefundDialog(order, refund)}
+                        className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
+                      >
+                        Edit & Resubmit
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -1018,6 +880,17 @@ const POS = () => {
         order={selectedOrder}
         refund={selectedRefund}
         onSuccess={refreshOrders}
+      />
+      <OrderReceiptDialog
+        open={receiptOpen}
+        onOpenChange={(open) => {
+          setReceiptOpen(open);
+
+          if (!open) {
+            setSelectedReceiptOrder(null);
+          }
+        }}
+        order={selectedReceiptOrder}
       />
     </div>
   );
