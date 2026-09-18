@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
-
 import {
   Dialog,
   DialogContent,
@@ -9,18 +7,46 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 import refundService from "@/services/refunds/refundService";
 
-const RefundDialog = ({ open, onOpenChange, order, onSuccess }) => {
+const RefundDialog = ({
+  open,
+  onOpenChange,
+  order,
+  refund = null,
+  onSuccess,
+}) => {
   const [items, setItems] = useState([]);
   const [reason, setReason] = useState("");
   const [refundMethod, setRefundMethod] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const isEditMode = !!refund;
+
   useEffect(() => {
+    if (!open) return;
+
+    if (refund) {
+      setItems(
+        (refund.items || []).map((item) => ({
+          orderItemId: item.orderItemId,
+          productName: `Order Item #${item.orderItemId}`,
+          purchasedQuantity: item.quantity,
+          price:
+            Number(item.amount || 0) / Number(item.quantity || 1),
+          quantity: item.quantity,
+        }))
+      );
+
+      setReason(refund.reason || "");
+      setRefundMethod(refund.refundMethod || "");
+
+      return;
+    }
+
     if (!order) {
       setItems([]);
       setReason("");
@@ -41,21 +67,12 @@ const RefundDialog = ({ open, onOpenChange, order, onSuccess }) => {
 
     setReason("");
 
-    /*
-     * Default refund method:
-     *
-     * UPI / CARD → ORIGINAL_SOURCE
-     * CASH       → UPI
-     *
-     * Cash orders cannot use ORIGINAL_SOURCE because there is
-     * no digital payment source to refund.
-     */
     if (order.paymentType === "CASH") {
       setRefundMethod("UPI");
     } else {
       setRefundMethod("ORIGINAL_SOURCE");
     }
-  }, [order]);
+  }, [open, order, refund]);
 
   const updateQuantity = (orderItemId, value, maxQuantity) => {
     const quantity = Math.max(
@@ -87,11 +104,18 @@ const RefundDialog = ({ open, onOpenChange, order, onSuccess }) => {
   );
 
   const handleSubmit = async () => {
-    if (!order) return;
+    if (isEditMode) {
+      if (refund.status !== "REJECTED") {
+        toast.error("Only rejected refunds can be edited.");
+        return;
+      }
+    } else {
+      if (!order) return;
 
-    if (order.status !== "COMPLETED") {
-      toast.error("Only completed orders can be refunded.");
-      return;
+      if (order.status !== "COMPLETED") {
+        toast.error("Only completed orders can be refunded.");
+        return;
+      }
     }
 
     if (selectedItems.length === 0) {
@@ -109,8 +133,10 @@ const RefundDialog = ({ open, onOpenChange, order, onSuccess }) => {
       return;
     }
 
+    const paymentType = order?.paymentType;
+
     if (
-      order.paymentType === "CASH" &&
+      paymentType === "CASH" &&
       refundMethod === "ORIGINAL_SOURCE"
     ) {
       toast.error("Cash orders must be refunded through UPI or Card.");
@@ -121,7 +147,7 @@ const RefundDialog = ({ open, onOpenChange, order, onSuccess }) => {
       setLoading(true);
 
       const payload = {
-        orderId: order.id,
+        orderId: isEditMode ? refund.orderId : order.id,
         reason: reason.trim(),
         refundMethod,
         items: selectedItems.map((item) => ({
@@ -130,9 +156,13 @@ const RefundDialog = ({ open, onOpenChange, order, onSuccess }) => {
         })),
       };
 
-      await refundService.create(payload);
-
-      toast.success("Refund request created successfully.");
+      if (isEditMode) {
+        await refundService.update(refund.id, payload);
+        toast.success("Refund updated and resubmitted successfully.");
+      } else {
+        await refundService.create(payload);
+        toast.success("Refund request created successfully.");
+      }
 
       onOpenChange(false);
 
@@ -142,48 +172,46 @@ const RefundDialog = ({ open, onOpenChange, order, onSuccess }) => {
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-          "Failed to create refund request."
+          (isEditMode
+            ? "Failed to update refund."
+            : "Failed to create refund request.")
       );
     } finally {
       setLoading(false);
     }
   };
 
-  if (!order) return null;
+  if (!order && !refund) return null;
+
+  const paymentType = order?.paymentType || "-";
+  const orderId = order?.id || refund?.orderId;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Refund Order #{order.id}</DialogTitle>
+          <DialogTitle>
+            {isEditMode
+              ? `Edit Refund #${refund.id}`
+              : `Refund Order #${order.id}`}
+          </DialogTitle>
 
           <DialogDescription>
-            Select the items and quantities you want to refund.
-            The refund request will require Branch Manager approval.
+            {isEditMode
+              ? "Update the rejected refund and resubmit it for Branch Manager approval."
+              : "Select the items and quantities you want to refund. The refund request will require Branch Manager approval."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
-          {/* Order Summary */}
           <div className="rounded-lg border p-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-muted-foreground">
-                  Order Total
+                  Order ID
                 </p>
-
                 <p className="mt-1 font-semibold">
-                  ₹{Number(order.totalAmount || 0).toFixed(2)}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  Original Payment
-                </p>
-
-                <p className="mt-1 font-semibold">
-                  {order.paymentType || "-"}
+                  #{orderId}
                 </p>
               </div>
 
@@ -191,30 +219,49 @@ const RefundDialog = ({ open, onOpenChange, order, onSuccess }) => {
                 <p className="text-xs text-muted-foreground">
                   Status
                 </p>
-
                 <p className="mt-1 font-semibold">
-                  {order.status || "-"}
+                  {isEditMode ? refund.status : order.status}
                 </p>
               </div>
 
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  Customer
-                </p>
+              {!isEditMode && (
+                <>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Order Total
+                    </p>
+                    <p className="mt-1 font-semibold">
+                      ₹{Number(order.totalAmount || 0).toFixed(2)}
+                    </p>
+                  </div>
 
-                <p className="mt-1 font-semibold truncate">
-                  {order.customerId
-                    ? `Customer #${order.customerId}`
-                    : "-"}
-                </p>
-              </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Original Payment
+                    </p>
+                    <p className="mt-1 font-semibold">
+                      {paymentType}
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {isEditMode && (
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Previous Rejection
+                  </p>
+                  <p className="mt-1 text-sm break-words">
+                    {refund.rejectionReason || "-"}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Items */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold">
-              Order Items
+              Refund Items
             </h3>
 
             {items.map((item) => (
@@ -275,7 +322,6 @@ const RefundDialog = ({ open, onOpenChange, order, onSuccess }) => {
             ))}
           </div>
 
-          {/* Refund Reason */}
           <div>
             <label className="mb-2 block text-sm font-medium">
               Refund Reason
@@ -286,11 +332,11 @@ const RefundDialog = ({ open, onOpenChange, order, onSuccess }) => {
               onChange={(e) => setReason(e.target.value)}
               placeholder="Enter reason for refund..."
               rows={3}
+              disabled={loading}
               className="w-full resize-none rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
-          {/* Refund Method */}
           <div>
             <label className="mb-2 block text-sm font-medium">
               Refund Method
@@ -299,18 +345,18 @@ const RefundDialog = ({ open, onOpenChange, order, onSuccess }) => {
             <select
               value={refundMethod}
               onChange={(e) => setRefundMethod(e.target.value)}
+              disabled={loading}
               className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Select refund method</option>
 
-              {order.paymentType !== "CASH" && (
+              {paymentType !== "CASH" && (
                 <option value="ORIGINAL_SOURCE">
                   Original Payment Source
                 </option>
               )}
 
               <option value="UPI">UPI</option>
-
               <option value="CARD">Card</option>
             </select>
 
@@ -319,7 +365,6 @@ const RefundDialog = ({ open, onOpenChange, order, onSuccess }) => {
             </p>
           </div>
 
-          {/* Total */}
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div>
               <p className="text-sm text-muted-foreground">
@@ -354,7 +399,13 @@ const RefundDialog = ({ open, onOpenChange, order, onSuccess }) => {
           </Button>
 
           <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? "Submitting..." : "Submit Refund Request"}
+            {loading
+              ? isEditMode
+                ? "Resubmitting..."
+                : "Submitting..."
+              : isEditMode
+                ? "Resubmit Refund"
+                : "Submit Refund Request"}
           </Button>
         </DialogFooter>
       </DialogContent>

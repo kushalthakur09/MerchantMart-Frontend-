@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Eye, X } from "lucide-react";
+import { Check, Edit, Eye, X } from "lucide-react";
 import { toast } from "sonner";
 
 import useAuth from "@/hooks/useAuth";
 import refundService from "@/services/refunds/refundService";
+import orderService from "@/services/order/orderService";
 
 import { ROLES } from "@/constants/roles";
 
@@ -14,6 +15,7 @@ import LoadingSpinner from "@/components/common/LoadingSpinner/LoadingSpinner";
 import Pagination from "@/components/common/Pagination/Pagination";
 import { Button } from "@/components/ui/button";
 
+import RefundDialog from "@/components/refunds/RefundDialog";
 import RefundApproveDialog from "@/components/refunds/RefundApproveDialog";
 import RefundRejectDialog from "@/components/refunds/RefundRejectDialog";
 import RefundViewDialog from "@/components/refunds/RefundViewDialog";
@@ -26,7 +28,10 @@ const Refunds = () => {
   const [loading, setLoading] = useState(true);
 
   const [selectedRefund, setSelectedRefund] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
   const [viewOpen, setViewOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const [approveOpen, setApproveOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -34,6 +39,7 @@ const Refunds = () => {
   const [actionLoading, setActionLoading] = useState(false);
 
   const isBranchManager = user?.role === ROLES.BRANCH_MANAGER;
+  const isCashier = user?.role === ROLES.BRANCH_CASHIER;
 
   const loadRefunds = async () => {
     try {
@@ -66,7 +72,9 @@ const Refunds = () => {
 
       setRefunds(data || []);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to load refunds.");
+      toast.error(
+        error.response?.data?.message || "Failed to load refunds."
+      );
     } finally {
       setLoading(false);
     }
@@ -109,6 +117,25 @@ const Refunds = () => {
     setViewOpen(true);
   };
 
+  const handleEditRefund = async (refund) => {
+    try {
+      setActionLoading(true);
+
+      const order = await orderService.getById(refund.orderId);
+
+      setSelectedRefund(refund);
+      setSelectedOrder(order);
+      setEditOpen(true);
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to load the original order."
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleApprove = async () => {
     if (!selectedRefund) return;
 
@@ -124,7 +151,9 @@ const Refunds = () => {
 
       await loadRefunds();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to approve refund.");
+      toast.error(
+        error.response?.data?.message || "Failed to approve refund."
+      );
     } finally {
       setActionLoading(false);
     }
@@ -145,10 +174,20 @@ const Refunds = () => {
 
       await loadRefunds();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to reject refund.");
+      toast.error(
+        error.response?.data?.message || "Failed to reject refund."
+      );
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleEditSuccess = async () => {
+    setEditOpen(false);
+    setSelectedRefund(null);
+    setSelectedOrder(null);
+
+    await loadRefunds();
   };
 
   const openApproveDialog = (refund) => {
@@ -186,7 +225,9 @@ const Refunds = () => {
       header: "Method",
       accessor: "refundMethod",
       cell: (row) =>
-        row.refundMethod ? row.refundMethod.replaceAll("_", " ") : "-",
+        row.refundMethod
+          ? row.refundMethod.replaceAll("_", " ")
+          : "-",
     },
     {
       header: "Status",
@@ -197,7 +238,10 @@ const Refunds = () => {
       header: "Reason",
       accessor: "reason",
       cell: (row) => (
-        <span className="block max-w-[220px] truncate" title={row.reason}>
+        <span
+          className="block max-w-[220px] truncate"
+          title={row.reason}
+        >
           {row.reason || "-"}
         </span>
       ),
@@ -206,9 +250,11 @@ const Refunds = () => {
       header: "Date",
       accessor: "createdDate",
       cell: (row) =>
-        row.createdDate ? new Date(row.createdDate).toLocaleString() : "-",
+        row.createdDate
+          ? new Date(row.createdDate).toLocaleString()
+          : "-",
     },
-    ...(isBranchManager
+    ...(isBranchManager || isCashier
       ? [
           {
             header: "Actions",
@@ -226,7 +272,7 @@ const Refunds = () => {
                   <Eye size={16} />
                 </Button>
 
-                {row.status === "PENDING" && (
+                {isBranchManager && row.status === "PENDING" && (
                   <>
                     <Button
                       variant="outline"
@@ -248,6 +294,18 @@ const Refunds = () => {
                       <X size={16} />
                     </Button>
                   </>
+                )}
+
+                {isCashier && row.status === "REJECTED" && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    title="Edit and Resubmit Refund"
+                    onClick={() => handleEditRefund(row)}
+                    disabled={actionLoading}
+                  >
+                    <Edit size={16} />
+                  </Button>
                 )}
               </div>
             ),
@@ -297,6 +355,21 @@ const Refunds = () => {
         open={viewOpen}
         onOpenChange={setViewOpen}
         refund={selectedRefund}
+      />
+
+      <RefundDialog
+        open={editOpen}
+        onOpenChange={(open) => {
+          setEditOpen(open);
+
+          if (!open) {
+            setSelectedRefund(null);
+            setSelectedOrder(null);
+          }
+        }}
+        order={selectedOrder}
+        refund={selectedRefund}
+        onSuccess={handleEditSuccess}
       />
 
       <RefundApproveDialog
