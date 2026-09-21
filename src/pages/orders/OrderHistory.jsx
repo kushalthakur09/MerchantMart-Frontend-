@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Eye, RotateCcw } from "lucide-react";
+import { Eye, X } from "lucide-react";
 
 import useAuth from "@/hooks/useAuth";
 import orderService from "@/services/order/orderService";
 
-import RefundDialog from "@/components/refunds/RefundDialog";
+import OrderDetailsDialog from "@/components/orders/OrderDetailsDialog";
 
 import LoadingSpinner from "@/components/common/LoadingSpinner/LoadingSpinner";
 import PageHeader from "@/components/common/PageHeader/PageHeader";
 import SearchBar from "@/components/common/SearchBar/SearchBar";
 import DataTable from "@/components/common/DataTable/DataTable";
-import Pagination from "@/components/common/Pagination/Pagination";
 
 import { ROLES } from "@/constants/roles";
+
+const ITEMS_PER_PAGE = 10;
 
 const OrderHistory = () => {
   const { user } = useAuth();
@@ -22,10 +22,17 @@ const OrderHistory = () => {
   const [orders, setOrders] = useState([]);
   const [search, setSearch] = useState("");
 
-  const [loading, setLoading] = useState(true);
+  const [paymentFilter, setPaymentFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [cashierFilter, setCashierFilter] = useState("ALL");
+  const [customerFilter, setCustomerFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
 
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [refundOpen, setRefundOpen] = useState(false);
+  const [orderDetailsOpen, setOrderDetailsOpen] = useState(false);
   const [orderLoading, setOrderLoading] = useState(false);
 
   const loadOrders = async () => {
@@ -35,30 +42,29 @@ const OrderHistory = () => {
       let data = [];
 
       if (user?.role === ROLES.ADMIN) {
-        // Super Admin
         data = await orderService.getAll();
       } else if (
         user?.role === ROLES.STORE_ADMIN ||
         user?.role === ROLES.STORE_MANAGER
       ) {
         if (!user?.storeId) {
-          toast.error("No store is assigned to the current user.");
+          toast.error("No store is assigned to this user.");
           return;
         }
 
         data = await orderService.getByStore(user.storeId);
       } else if (user?.role === ROLES.BRANCH_MANAGER) {
         if (!user?.branchId) {
-          toast.error("No branch is assigned to the current user.");
+          toast.error("No branch is assigned to this user.");
           return;
         }
 
         data = await orderService.getByBranch(user.branchId);
       }
 
-      setOrders(data);
+      setOrders(data || []);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to load orders.");
+      toast.error(error?.response?.data?.message || "Failed to load orders.");
     } finally {
       setLoading(false);
     }
@@ -70,35 +76,129 @@ const OrderHistory = () => {
     }
   }, [user]);
 
+  const cashiers = useMemo(() => {
+    const uniqueCashiers = new Map();
+
+    orders.forEach((order) => {
+      if (order.cashier?.id) {
+        uniqueCashiers.set(
+          order.cashier.id,
+          order.cashier.fullUserName || `Cashier #${order.cashier.id}`,
+        );
+      }
+    });
+
+    return Array.from(uniqueCashiers.entries());
+  }, [orders]);
+
   const filteredOrders = useMemo(() => {
     const keyword = search.trim().toLowerCase();
-
-    if (!keyword) {
-      return orders;
-    }
+    const customerKeyword = customerFilter.trim().toLowerCase();
 
     return orders.filter((order) => {
-      const orderId = String(order.id || "");
-
+      const orderId = String(order.id || "").toLowerCase();
       const customerName = order.customerId
-        ? `Customer #${order.customerId}`
+        ? `customer #${order.customerId}`.toLowerCase()
+        : "";
+      const cashierName = (order.cashier?.fullUserName || "").toLowerCase();
+      const paymentType = String(order.paymentType || "").toLowerCase();
+      const status = String(order.status || "").toLowerCase();
+
+      const matchesSearch =
+        !keyword ||
+        orderId.includes(keyword) ||
+        customerName.includes(keyword) ||
+        cashierName.includes(keyword) ||
+        paymentType.includes(keyword) ||
+        status.includes(keyword);
+
+      const matchesPayment =
+        paymentFilter === "ALL" || order.paymentType === paymentFilter;
+
+      const matchesStatus =
+        statusFilter === "ALL" || order.status === statusFilter;
+
+      const matchesCashier =
+        cashierFilter === "ALL" ||
+        String(order.cashier?.id) === String(cashierFilter);
+
+      const matchesCustomer =
+        !customerKeyword ||
+        String(order.customerId || "")
+          .toLowerCase()
+          .includes(customerKeyword) ||
+        customerName.includes(customerKeyword);
+
+      const orderDate = order.createdDate
+        ? new Date(order.createdDate).toISOString().split("T")[0]
         : "";
 
-      const cashierName = order.cashier?.fullUserName || "";
-
-      const paymentType = order.paymentType || "";
-
-      const status = order.status || "";
+      const matchesDate = !dateFilter || orderDate === dateFilter;
 
       return (
-        orderId.toLowerCase().includes(keyword) ||
-        customerName.toLowerCase().includes(keyword) ||
-        cashierName.toLowerCase().includes(keyword) ||
-        paymentType.toLowerCase().includes(keyword) ||
-        status.toLowerCase().includes(keyword)
+        matchesSearch &&
+        matchesPayment &&
+        matchesStatus &&
+        matchesCashier &&
+        matchesCustomer &&
+        matchesDate
       );
     });
-  }, [orders, search]);
+  }, [
+    orders,
+    search,
+    paymentFilter,
+    statusFilter,
+    cashierFilter,
+    customerFilter,
+    dateFilter,
+  ]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredOrders.length / ITEMS_PER_PAGE),
+  );
+
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+
+    return filteredOrders.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredOrders, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    search,
+    paymentFilter,
+    statusFilter,
+    cashierFilter,
+    customerFilter,
+    dateFilter,
+  ]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const clearFilters = () => {
+    setSearch("");
+    setPaymentFilter("ALL");
+    setStatusFilter("ALL");
+    setCashierFilter("ALL");
+    setCustomerFilter("");
+    setDateFilter("");
+    setCurrentPage(1);
+  };
+
+  const hasFilters =
+    search ||
+    paymentFilter !== "ALL" ||
+    statusFilter !== "ALL" ||
+    cashierFilter !== "ALL" ||
+    customerFilter ||
+    dateFilter;
 
   const handleViewOrder = async (orderId) => {
     try {
@@ -107,26 +207,10 @@ const OrderHistory = () => {
       const order = await orderService.getById(orderId);
 
       setSelectedOrder(order);
+      setOrderDetailsOpen(true);
     } catch (error) {
       toast.error(
-        error.response?.data?.message || "Failed to load order details.",
-      );
-    } finally {
-      setOrderLoading(false);
-    }
-  };
-
-  const handleRefund = async (orderId) => {
-    try {
-      setOrderLoading(true);
-
-      const order = await orderService.getById(orderId);
-
-      setSelectedOrder(order);
-      setRefundOpen(true);
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to load order details.",
+        error?.response?.data?.message || "Failed to load order details.",
       );
     } finally {
       setOrderLoading(false);
@@ -136,72 +220,60 @@ const OrderHistory = () => {
   const columns = [
     {
       header: "Order ID",
-      accessor: "id",
-      cell: (row) => `#${row.id}`,
+      accessorKey: "id",
+      cell: (order) => `#${order.id}`,
     },
     {
       header: "Customer",
-      accessor: "customerId",
-      cell: (row) => (row.customerId ? `Customer #${row.customerId}` : "-"),
+      accessorKey: "customerId",
+      cell: (order) =>
+        order.customerId ? `Customer #${order.customerId}` : "-",
     },
     {
       header: "Cashier",
-      accessor: "cashier",
-      cell: (row) => row.cashier?.fullUserName || "-",
+      accessorKey: "cashier",
+      cell: (order) => order.cashier?.fullUserName || "-",
     },
     {
       header: "Payment",
-      accessor: "paymentType",
-      cell: (row) => row.paymentType || "-",
+      accessorKey: "paymentType",
+      cell: (order) => order.paymentType || "-",
     },
     {
       header: "Status",
-      accessor: "status",
-      cell: (row) => row.status || "-",
+      accessorKey: "status",
+      cell: (order) => order.status || "-",
     },
     {
       header: "Total",
-      accessor: "totalAmount",
-      cell: (row) => `₹${Number(row.totalAmount || 0).toFixed(2)}`,
+      accessorKey: "totalAmount",
+      cell: (order) => `₹${Number(order.totalAmount || 0).toFixed(2)}`,
     },
     {
       header: "Date",
-      accessor: "createdDate",
-      cell: (row) =>
-        row.createdDate ? new Date(row.createdDate).toLocaleString() : "-",
+      accessorKey: "createdDate",
+      cell: (order) =>
+        order.createdDate ? new Date(order.createdDate).toLocaleString() : "-",
     },
     {
       header: "Actions",
-      accessor: "actions",
-      className: "text-right",
-      cell: (row) => (
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            title="View Order"
-            onClick={() => handleViewOrder(row.id)}
-            disabled={orderLoading}
-          >
-            <Eye size={16} />
-          </Button>
-
-          {user?.role === ROLES.BRANCH_CASHIER &&
-            row.status === "COMPLETED" && (
-              <Button
-                variant="outline"
-                size="icon"
-                title="Refund Order"
-                onClick={() => handleRefund(row.id)}
-                disabled={orderLoading}
-              >
-                <RotateCcw size={16} />
-              </Button>
-            )}
-        </div>
+      cell: (order) => (
+        <button
+          type="button"
+          onClick={() => handleViewOrder(order.id)}
+          disabled={orderLoading}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md border hover:bg-muted disabled:opacity-50"
+          title="View order"
+        >
+          <Eye className="h-4 w-4" />
+        </button>
       ),
     },
   ];
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <div className="space-y-6">
@@ -210,38 +282,132 @@ const OrderHistory = () => {
       <SearchBar
         value={search}
         onChange={setSearch}
-        placeholder="Search orders..."
+        placeholder="Search by order ID, customer, cashier, payment or status..."
       />
 
-      {loading ? (
-        <LoadingSpinner text="Loading orders..." />
-      ) : (
-        <DataTable
-          columns={columns}
-          data={filteredOrders}
-          emptyTitle={search ? "No Orders Found" : "No Orders Yet"}
-          emptyDescription={
-            search ? "Try a different search term." : "Orders will appear here."
-          }
-        />
+      {/* Filters */}
+      <div className="rounded-lg border bg-card p-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+          {/* Customer */}
+          <input
+            type="text"
+            value={customerFilter}
+            onChange={(e) => setCustomerFilter(e.target.value)}
+            placeholder="Customer ID"
+            className="h-10 rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+          />
+
+          {/* Payment */}
+          <select
+            value={paymentFilter}
+            onChange={(e) => setPaymentFilter(e.target.value)}
+            className="h-10 rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="ALL">All Payments</option>
+            <option value="CASH">Cash</option>
+            <option value="CARD">Card</option>
+            <option value="UPI">UPI</option>
+          </select>
+
+          {/* Status */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-10 rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="CANCELLED">Cancelled</option>
+            <option value="REFUNDED">Refunded</option>
+          </select>
+
+          {/* Cashier */}
+          <select
+            value={cashierFilter}
+            onChange={(e) => setCashierFilter(e.target.value)}
+            className="h-10 rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="ALL">All Cashiers</option>
+
+            {cashiers.map(([id, name]) => (
+              <option key={id} value={id}>
+                {name}
+              </option>
+            ))}
+          </select>
+
+          {/* Date */}
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="h-10 rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+
+        {hasFilters && (
+          <div className="mt-4 flex justify-end">
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted"
+            >
+              <X className="h-4 w-4" />
+              Clear Filters
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Result count */}
+      <div className="text-sm text-muted-foreground">
+        Showing {paginatedOrders.length} of {filteredOrders.length} orders
+      </div>
+
+      <DataTable columns={columns} data={paginatedOrders} />
+
+      {/* Pagination */}
+      {filteredOrders.length > 0 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </p>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              className="rounded-md border px-3 py-2 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
+
+            <button
+              type="button"
+              disabled={currentPage === totalPages}
+              onClick={() =>
+                setCurrentPage((page) => Math.min(totalPages, page + 1))
+              }
+              className="rounded-md border px-3 py-2 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       )}
 
-      {filteredOrders.length > 0 && (
-        <Pagination
-          currentPage={1}
-          totalPages={1}
-          onPrevious={() => {}}
-          onNext={() => {}}
-        />
-      )}
-      {selectedOrder && (
-        <RefundDialog
-          open={refundOpen}
-          onOpenChange={setRefundOpen}
-          order={selectedOrder}
-          onSuccess={loadOrders}
-        />
-      )}
+      <OrderDetailsDialog
+        open={orderDetailsOpen}
+        onOpenChange={(open) => {
+          setOrderDetailsOpen(open);
+
+          if (!open) {
+            setSelectedOrder(null);
+          }
+        }}
+        order={selectedOrder}
+      />
     </div>
   );
 };
