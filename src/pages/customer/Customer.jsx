@@ -20,13 +20,30 @@ import useAuth from "@/hooks/useAuth";
 const Customer = () => {
   const { user } = useAuth();
 
-  const isAdmin =
-    user?.role === ROLES.ADMIN;
+  const canCreateCustomer =
+    user?.role === ROLES.STORE_ADMIN ||
+    user?.role === ROLES.STORE_MANAGER ||
+    user?.role === ROLES.BRANCH_MANAGER;
 
-  const canManageCustomers =
+  const canEditCustomer =
     user?.role === ROLES.ADMIN ||
     user?.role === ROLES.STORE_ADMIN ||
     user?.role === ROLES.STORE_MANAGER;
+
+  const canChangeStatus =
+    user?.role === ROLES.ADMIN ||
+    user?.role === ROLES.STORE_ADMIN ||
+    user?.role === ROLES.STORE_MANAGER ||
+    user?.role === ROLES.BRANCH_MANAGER;
+
+  const canActivateCustomer =
+    user?.role === ROLES.ADMIN ||
+    user?.role === ROLES.STORE_ADMIN ||
+    user?.role === ROLES.STORE_MANAGER ||
+    user?.role === ROLES.BRANCH_MANAGER;
+
+  const canDeactivateCustomer =
+    user?.role === ROLES.ADMIN || user?.role === ROLES.STORE_ADMIN;
 
   const [search, setSearch] = useState("");
   const [customers, setCustomers] = useState([]);
@@ -35,17 +52,13 @@ const Customer = () => {
   const [saving, setSaving] = useState(false);
   const [toggling, setToggling] = useState(false);
 
-  const [openCustomerDialog, setOpenCustomerDialog] =
-    useState(false);
+  const [openCustomerDialog, setOpenCustomerDialog] = useState(false);
 
-  const [editingCustomer, setEditingCustomer] =
-    useState(null);
+  const [editingCustomer, setEditingCustomer] = useState(null);
 
-  const [openStatusDialog, setOpenStatusDialog] =
-    useState(false);
+  const [openStatusDialog, setOpenStatusDialog] = useState(false);
 
-  const [selectedCustomer, setSelectedCustomer] =
-    useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   const loadCustomers = async () => {
     try {
@@ -55,10 +68,7 @@ const Customer = () => {
 
       setCustomers(response);
     } catch (error) {
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to load customers."
-      );
+      toast.error(error.response?.data?.message || "Failed to load customers.");
     } finally {
       setLoading(false);
     }
@@ -83,20 +93,13 @@ const Customer = () => {
       setSaving(true);
 
       if (editingCustomer) {
-        await customerService.update(
-          editingCustomer.id,
-          customer
-        );
+        await customerService.update(editingCustomer.id, customer);
 
-        toast.success(
-          "Customer updated successfully."
-        );
+        toast.success("Customer updated successfully.");
       } else {
         await customerService.create(customer);
 
-        toast.success(
-          "Customer created successfully."
-        );
+        toast.success("Customer created successfully.");
       }
 
       setOpenCustomerDialog(false);
@@ -106,11 +109,7 @@ const Customer = () => {
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-          `Failed to ${
-            editingCustomer
-              ? "update"
-              : "create"
-          } customer.`
+          `Failed to ${editingCustomer ? "update" : "create"} customer.`,
       );
     } finally {
       setSaving(false);
@@ -125,23 +124,18 @@ const Customer = () => {
     try {
       setToggling(true);
 
-      const isActive =
-        selectedCustomer.status === "ACTIVE";
+      const isActive = selectedCustomer.status === "ACTIVE";
 
       if (isActive) {
-        await customerService.deactivate(
-          selectedCustomer.id
-        );
+        await customerService.deactivate(selectedCustomer.id);
       } else {
-        await customerService.activate(
-          selectedCustomer.id
-        );
+        await customerService.activate(selectedCustomer.id);
       }
 
       toast.success(
         isActive
           ? "Customer deactivated successfully."
-          : "Customer activated successfully."
+          : "Customer activated successfully.",
       );
 
       setOpenStatusDialog(false);
@@ -152,33 +146,23 @@ const Customer = () => {
       toast.error(
         error.response?.data?.message ||
           `Failed to ${
-            selectedCustomer.status === "ACTIVE"
-              ? "deactivate"
-              : "activate"
-          } customer.`
+            selectedCustomer.status === "ACTIVE" ? "deactivate" : "activate"
+          } customer.`,
       );
     } finally {
       setToggling(false);
     }
   };
 
-  const filteredCustomers = customers.filter(
-    (customer) => {
-      const keyword = search.toLowerCase();
+  const filteredCustomers = customers.filter((customer) => {
+    const keyword = search.toLowerCase();
 
-      return (
-        customer.fullName
-          ?.toLowerCase()
-          .includes(keyword) ||
-        customer.email
-          ?.toLowerCase()
-          .includes(keyword) ||
-        customer.phoneNo
-          ?.toLowerCase()
-          .includes(keyword)
-      );
-    }
-  );
+    return (
+      customer.fullName?.toLowerCase().includes(keyword) ||
+      customer.email?.toLowerCase().includes(keyword) ||
+      customer.phoneNo?.toLowerCase().includes(keyword)
+    );
+  });
 
   const columns = [
     {
@@ -207,7 +191,7 @@ const Customer = () => {
   ];
 
   // Only management roles get action buttons
-  if (canManageCustomers) {
+  if (canEditCustomer || canChangeStatus) {
     columns.push({
       header: "Actions",
       accessor: "actions",
@@ -215,30 +199,30 @@ const Customer = () => {
 
       cell: (row) => (
         <div className="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() =>
-              handleEditCustomer(row)
-            }
-          >
-            <Pencil size={16} />
-          </Button>
+          {canEditCustomer && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => handleEditCustomer(row)}
+            >
+              <Pencil size={16} />
+            </Button>
+          )}
 
-          <Button
-            variant={
-              row.status === "ACTIVE"
-                ? "destructive"
-                : "outline"
-            }
-            size="icon"
-            onClick={() => {
-              setSelectedCustomer(row);
-              setOpenStatusDialog(true);
-            }}
-          >
-            <Power size={16} />
-          </Button>
+          {(row.status === "ACTIVE"
+            ? canDeactivateCustomer
+            : canActivateCustomer) && (
+            <Button
+              variant={row.status === "ACTIVE" ? "destructive" : "outline"}
+              size="icon"
+              onClick={() => {
+                setSelectedCustomer(row);
+                setOpenStatusDialog(true);
+              }}
+            >
+              <Power size={16} />
+            </Button>
+          )}
         </div>
       ),
     });
@@ -249,16 +233,8 @@ const Customer = () => {
       <PageHeader
         title="Customers"
         description="Manage your customers."
-        buttonLabel={
-          canManageCustomers
-            ? "Add Customer"
-            : undefined
-        }
-        onButtonClick={
-          canManageCustomers
-            ? handleCreateCustomer
-            : undefined
-        }
+        buttonLabel={canCreateCustomer ? "Add Customer" : undefined}
+        onButtonClick={canCreateCustomer ? handleCreateCustomer : undefined}
       />
 
       <SearchBar
@@ -273,15 +249,11 @@ const Customer = () => {
         <DataTable
           columns={columns}
           data={filteredCustomers}
-          emptyTitle={
-            search
-              ? "No Customers Found"
-              : "No Customers Yet"
-          }
+          emptyTitle={search ? "No Customers Found" : "No Customers Yet"}
           emptyDescription={
             search
               ? "Try a different search term."
-              : canManageCustomers
+              : canCreateCustomer
                 ? "Create your first customer."
                 : "No customers are available."
           }
@@ -297,7 +269,7 @@ const Customer = () => {
         />
       )}
 
-      {canManageCustomers && (
+      {canCreateCustomer && (
         <>
           <CustomerDialog
             open={openCustomerDialog}
@@ -308,11 +280,7 @@ const Customer = () => {
                 setEditingCustomer(null);
               }
             }}
-            title={
-              editingCustomer
-                ? "Edit Customer"
-                : "Add Customer"
-            }
+            title={editingCustomer ? "Edit Customer" : "Add Customer"}
             loading={saving}
             initialData={editingCustomer}
             onSubmit={handleSaveCustomer}
@@ -330,9 +298,7 @@ const Customer = () => {
               }
             }}
             action={
-              selectedCustomer?.status === "ACTIVE"
-                ? "deactivate"
-                : "activate"
+              selectedCustomer?.status === "ACTIVE" ? "deactivate" : "activate"
             }
             title={
               selectedCustomer?.status === "ACTIVE"
