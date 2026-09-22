@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import useAuth from "@/hooks/useAuth";
+import {useRazorpay} from "react-razorpay";
+
 import productService from "@/services/product/productService";
 import customerService from "@/services/customer/customerService";
 import orderService from "@/services/order/orderService";
@@ -11,8 +13,11 @@ import refundService from "@/services/refunds/refundService";
 import RefundDialog from "@/components/refunds/RefundDialog";
 import OrderReceiptDialog from "@/components/orders/OrderReceiptDialog";
 
+import { createRazorpayCheckout } from "@/services/api/paymentApi";
+
 const POS = () => {
   const { user } = useAuth();
+  const { Razorpay } = useRazorpay();
 
   const [inventory, setInventory] = useState([]);
   const [products, setProducts] = useState([]);
@@ -350,26 +355,72 @@ const POS = () => {
     try {
       setPlacingOrder(true);
 
-      const order = {
-        branchId: user.branchId,
+      // CASH → existing order flow
+      if (paymentType === "CASH") {
+        const order = {
+          branchId: user.branchId,
+          customerId: selectedCustomer.id,
+          paymentType,
+          items: cart.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          })),
+        };
+
+        await orderService.create(order);
+
+        toast.success("Order placed successfully.");
+
+        clearCart();
+        await refreshOrders();
+
+        return;
+      }
+
+      // UPI / CARD → Razorpay
+      const checkout = await createRazorpayCheckout({
         customerId: selectedCustomer.id,
-        paymentType,
         items: cart.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
         })),
+      });
+
+      const options = {
+        key: checkout.razorpayKeyId,
+        amount: Number(checkout.amount) * 100,
+        currency: checkout.currency,
+        name: "MerchantMart",
+        description: `Order #${checkout.orderId}`,
+        order_id: checkout.razorpayOrderId,
+
+        handler: (response) => {
+          console.log("Razorpay payment response:", response);
+          toast.success("Payment completed. Verification pending.");
+          // Backend verification will be added next.
+        },
+
+        modal: {
+          ondismiss: () => {
+            setPlacingOrder(false);
+          },
+        },
       };
 
-      await orderService.create(order);
+      const razorpay = new Razorpay(options);
 
-      toast.success("Order placed successfully.");
+      razorpay.on("payment.failed", (response) => {
+        console.error("Razorpay payment failed:", response);
+        toast.error(response.error?.description || "Payment failed.");
+        setPlacingOrder(false);
+      });
 
-      clearCart();
-
-      await refreshOrders();
+      razorpay.open();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to place order.");
-    } finally {
+      toast.error(
+        error.response?.data?.message || "Failed to initiate payment.",
+      );
+
       setPlacingOrder(false);
     }
   };
