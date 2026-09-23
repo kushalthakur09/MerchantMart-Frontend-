@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import useAuth from "@/hooks/useAuth";
-import {useRazorpay} from "react-razorpay";
+import { useRazorpay } from "react-razorpay";
 
 import productService from "@/services/product/productService";
 import customerService from "@/services/customer/customerService";
@@ -13,7 +13,7 @@ import refundService from "@/services/refunds/refundService";
 import RefundDialog from "@/components/refunds/RefundDialog";
 import OrderReceiptDialog from "@/components/orders/OrderReceiptDialog";
 
-import { createRazorpayCheckout } from "@/services/api/paymentApi";
+import { createRazorpayCheckout , verifyRazorpayPayment } from "@/services/api/paymentApi";
 
 const POS = () => {
   const { user } = useAuth();
@@ -380,6 +380,7 @@ const POS = () => {
       // UPI / CARD → Razorpay
       const checkout = await createRazorpayCheckout({
         customerId: selectedCustomer.id,
+        paymentType,
         items: cart.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -394,10 +395,26 @@ const POS = () => {
         description: `Order #${checkout.orderId}`,
         order_id: checkout.razorpayOrderId,
 
-        handler: (response) => {
-          console.log("Razorpay payment response:", response);
-          toast.success("Payment completed. Verification pending.");
-          // Backend verification will be added next.
+        handler: async (response) => {
+          try {
+            await verifyRazorpayPayment({
+              orderId: checkout.orderId,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+
+            toast.success("Payment successful. Order completed.");
+
+            clearCart();
+            await refreshOrders();
+          } catch (error) {
+            toast.error(
+              error.response?.data?.message || "Payment verification failed.",
+            );
+          } finally {
+            setPlacingOrder(false);
+          }
         },
 
         modal: {
