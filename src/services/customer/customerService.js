@@ -63,6 +63,16 @@ const activateForOrder = async (id) => {
   return response.data;
 };
 
+const verifyCustomerEmail = async (data) => {
+  const response = await api.post("/api/customer/order/verify-email", data);
+  return response.data;
+};
+
+const resendCustomerEmailOtp = async (data) => {
+  const response = await api.post("/api/auth/otp/resend",data);
+  return response.data;
+};
+
 const customerService = {
   getAll,
   search,
@@ -75,6 +85,8 @@ const customerService = {
   getForOrder,
   createForOrder,
   activateForOrder,
+  verifyCustomerEmail,
+  resendCustomerEmailOtp,
 };
 
 export default customerService;

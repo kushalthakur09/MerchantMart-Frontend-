@@ -13,7 +13,10 @@ import refundService from "@/services/refunds/refundService";
 import RefundDialog from "@/components/refunds/RefundDialog";
 import OrderReceiptDialog from "@/components/orders/OrderReceiptDialog";
 
-import { createRazorpayCheckout , verifyRazorpayPayment } from "@/services/api/paymentApi";
+import {
+  createRazorpayCheckout,
+  verifyRazorpayPayment,
+} from "@/services/api/paymentApi";
 
 const POS = () => {
   const { user } = useAuth();
@@ -30,6 +33,16 @@ const POS = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   const [showCustomerForm, setShowCustomerForm] = useState(false);
+
+  const [showOtpForm, setShowOtpForm] = useState(false);
+  const [customerOtp, setCustomerOtp] = useState("");
+  const [pendingCustomer, setPendingCustomer] = useState(null);
+  const [verifyingCustomerOtp, setVerifyingCustomerOtp] = useState(false);
+
+  const [resendingCustomerOtp, setResendingCustomerOtp] = useState(false);
+
+  const [otpCooldown, setOtpCooldown] = useState(60);
+
   const [newCustomer, setNewCustomer] = useState({
     fullName: "",
     phoneNo: "",
@@ -87,6 +100,17 @@ const POS = () => {
     loadProducts();
   }, [user?.storeId, user?.branchId]);
 
+  useEffect(() => {
+    if (!showOtpForm || otpCooldown <= 0) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setOtpCooldown((current) => current - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [showOtpForm, otpCooldown]);
   // =========================
   // Product Search
   // =========================
@@ -287,7 +311,6 @@ const POS = () => {
     try {
       const customer = await customerService.createForOrder(newCustomer);
 
-      setSelectedCustomer(customer);
       setShowCustomerForm(false);
 
       setNewCustomer({
@@ -296,11 +319,88 @@ const POS = () => {
         email: "",
       });
 
+      // Email provided → OTP verification required
+      if (customer.email) {
+        setPendingCustomer(customer);
+        setCustomerOtp("");
+        setShowOtpForm(true);
+
+        toast.success("OTP sent to customer's email.");
+        return;
+      }
+
+      // No email → directly select customer
+      setSelectedCustomer(customer);
+
       toast.success("Customer registered successfully.");
     } catch (error) {
       toast.error(
         error.response?.data?.message || "Failed to register customer.",
       );
+    }
+  };
+
+  const verifyCustomerOtp = async (event) => {
+    event.preventDefault();
+
+    if (!/^\d{6}$/.test(customerOtp)) {
+      toast.error("OTP must be 6 digits.");
+      return;
+    }
+
+    if (!pendingCustomer?.email) {
+      toast.error("Customer email is missing.");
+      return;
+    }
+
+    try {
+      setVerifyingCustomerOtp(true);
+
+      await customerService.verifyCustomerEmail({
+        email: pendingCustomer.email,
+        otp: customerOtp,
+      });
+
+      const verifiedCustomer = {
+        ...pendingCustomer,
+        emailVerified: true,
+      };
+
+      setSelectedCustomer(verifiedCustomer);
+      setPendingCustomer(null);
+      setCustomerOtp("");
+      setShowOtpForm(false);
+
+      toast.success("Customer email verified successfully.");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Invalid or expired OTP.");
+    } finally {
+      setVerifyingCustomerOtp(false);
+    }
+  };
+
+  const resendCustomerOtp = async () => {
+    if (!pendingCustomer?.email) {
+      toast.error("Customer email is missing.");
+      return;
+    }
+
+    try {
+      setResendingCustomerOtp(true);
+
+      await customerService.resendCustomerEmailOtp({
+        email: pendingCustomer.email,
+        name: pendingCustomer.fullName,
+      });
+
+      setCustomerOtp("");
+      setOtpCooldown(60);
+
+      toast.success("A new OTP has been sent.");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to resend OTP.");
+    } finally {
+      setResendingCustomerOtp(false);
     }
   };
 
@@ -798,6 +898,73 @@ const POS = () => {
                 <button
                   type="button"
                   onClick={() => setShowCustomerForm(false)}
+                  className="rounded-md border px-4 py-2"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+
+          {showOtpForm && (
+            <form
+              onSubmit={verifyCustomerOtp}
+              className="mt-4 space-y-3 rounded-md border p-4"
+            >
+              <h3 className="font-semibold">Verify Customer Email</h3>
+
+              <p className="text-sm text-muted-foreground">
+                Enter the 6-digit OTP sent to{" "}
+                <span className="font-medium">{pendingCustomer?.email}</span>
+              </p>
+
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="Enter OTP"
+                value={customerOtp}
+                onChange={(event) =>
+                  setCustomerOtp(event.target.value.replace(/\D/g, ""))
+                }
+                className="w-full rounded-md border bg-background px-3 py-2"
+              />
+
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={verifyingCustomerOtp}
+                  className="rounded-md bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50"
+                >
+                  {verifyingCustomerOtp ? "Verifying..." : "Verify OTP"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={resendCustomerOtp}
+                  disabled={
+                    otpCooldown > 0 ||
+                    resendingCustomerOtp ||
+                    verifyingCustomerOtp
+                  }
+                  className="rounded-md border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {resendingCustomerOtp
+                    ? "Sending..."
+                    : otpCooldown > 0
+                      ? `Resend OTP in ${otpCooldown}s`
+                      : "Resend OTP"}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={verifyingCustomerOtp}
+                  onClick={() => {
+                    setShowOtpForm(false);
+                    setPendingCustomer(null);
+                    setCustomerOtp("");
+                    setOtpCooldown(0);
+                  }}
                   className="rounded-md border px-4 py-2"
                 >
                   Cancel
