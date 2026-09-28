@@ -69,7 +69,7 @@ const verifyCustomerEmail = async (data) => {
 };
 
 const resendCustomerEmailOtp = async (data) => {
-  const response = await api.post("/api/auth/otp/resend",data);
+  const response = await api.post("/auth/otp/resend",data);
   return response.data;
 };
 

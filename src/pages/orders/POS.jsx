@@ -40,8 +40,9 @@ const POS = () => {
   const [verifyingCustomerOtp, setVerifyingCustomerOtp] = useState(false);
 
   const [resendingCustomerOtp, setResendingCustomerOtp] = useState(false);
-
   const [otpCooldown, setOtpCooldown] = useState(60);
+  const [sendingVerificationCustomerId, setSendingVerificationCustomerId] =
+    useState(null);
 
   const [newCustomer, setNewCustomer] = useState({
     fullName: "",
@@ -277,6 +278,13 @@ const POS = () => {
   }, [customerSearch]);
 
   const selectCustomer = (customer) => {
+    if (customer.email && !customer.emailVerified) {
+      toast.error(
+        "Customer email is not verified. Please verify the customer before adding them to the order.",
+      );
+      return;
+    }
+
     setSelectedCustomer(customer);
     setCustomerSearch("");
     setCustomers([]);
@@ -357,6 +365,7 @@ const POS = () => {
       setVerifyingCustomerOtp(true);
 
       await customerService.verifyCustomerEmail({
+        customerId: pendingCustomer.id,
         email: pendingCustomer.email,
         otp: customerOtp,
       });
@@ -404,6 +413,34 @@ const POS = () => {
     }
   };
 
+  const sendCustomerVerification = async (customer) => {
+    if (!customer.email) {
+      toast.error("Customer does not have an email address.");
+      return;
+    }
+
+    try {
+      setSendingVerificationCustomerId(customer.id);
+
+      await customerService.resendCustomerEmailOtp({
+        email: customer.email,
+        name: customer.fullName,
+      });
+
+      setPendingCustomer(customer);
+      setCustomerOtp("");
+      setOtpCooldown(60);
+      setShowOtpForm(true);
+
+      toast.success("Verification OTP sent to customer email.");
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to send verification OTP.",
+      );
+    } finally {
+      setSendingVerificationCustomerId(null);
+    }
+  };
   // =========================
   // Activate Customer
   // =========================
@@ -826,17 +863,48 @@ const POS = () => {
                         <div className="text-sm text-muted-foreground">
                           {customer.phoneNo}
                         </div>
+
+                        {customer.email && (
+                          <div className="text-xs mt-1">
+                            {customer.emailVerified ? (
+                              <span className="text-green-600">
+                                ✓ Email verified
+                              </span>
+                            ) : (
+                              <span className="text-destructive">
+                                ⚠ Email not verified
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </button>
 
-                      {customer.status === "INACTIVE" && (
-                        <button
-                          type="button"
-                          onClick={() => activateCustomer(customer)}
-                          className="text-sm font-medium"
-                        >
-                          Activate
-                        </button>
-                      )}
+                      <div className="flex items-center gap-3">
+                        {customer.email && !customer.emailVerified && (
+                          <button
+                            type="button"
+                            onClick={() => sendCustomerVerification(customer)}
+                            disabled={
+                              sendingVerificationCustomerId === customer.id
+                            }
+                            className="text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {sendingVerificationCustomerId === customer.id
+                              ? "Sending..."
+                              : "Verify Email"}
+                          </button>
+                        )}
+
+                        {customer.status === "INACTIVE" && (
+                          <button
+                            type="button"
+                            onClick={() => activateCustomer(customer)}
+                            className="text-sm font-medium"
+                          >
+                            Activate
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
