@@ -1,18 +1,31 @@
+import { useState } from "react";
+
+import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";
+
 import LoginHeader from "@/components/auth/LoginHeader";
 import LoginForm from "@/components/auth/LoginForm";
 import GoogleLoginButton from "@/components/auth/GoogleLoginButton";
 
 const Login = ({ isAdminLogin = false }) => {
+  const [forgotPassword, setForgotPassword] = useState(false);
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <div className="w-full max-w-md rounded-xl border bg-background p-8 shadow-lg">
         <LoginHeader />
 
         <div className="mt-8">
-          <LoginForm isAdminLogin={isAdminLogin} />
+          {forgotPassword ? (
+            <ForgotPasswordForm onBack={() => setForgotPassword(false)} />
+          ) : (
+            <LoginForm
+              isAdminLogin={isAdminLogin}
+              onForgotPassword={() => setForgotPassword(true)}
+            />
+          )}
         </div>
 
-        {!isAdminLogin && (
+       {!isAdminLogin && !forgotPassword && (
           <>
             <div className="my-6">
               <div className="relative">

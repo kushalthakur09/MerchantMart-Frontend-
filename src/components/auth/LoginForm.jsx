@@ -8,7 +8,7 @@ import { loginSchema } from "@/validation/authSchema";
 import useAuth from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 
-const LoginForm = ({ isAdminLogin = false }) => {
+const LoginForm = ({ isAdminLogin = false , onForgotPassword,}) => {
   const { login, adminLogin } = useAuth();
   const navigate = useNavigate();
 
@@ -79,7 +79,17 @@ const LoginForm = ({ isAdminLogin = false }) => {
           </p>
         )}
       </div>
-
+      {!isAdminLogin && (
+        <div className="text-right">
+          <button
+            type="button"
+            onClick={onForgotPassword}
+            className="text-sm text-primary hover:underline"
+          >
+            Forgot Password?
+          </button>
+        </div>
+      )}
       <Button type="submit" className="w-full">
         Login
       </Button>
